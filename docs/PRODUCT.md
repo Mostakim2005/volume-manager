@@ -3,6 +3,8 @@
 
 ## 1. Core Vision & User Experience Intent
 * **What This App Does (Plain English):** Provides a slim, flush edge pill that docks to the left or right of the screen and expands into a rotated vertical volume slider, staying alive across reboots and aggressive Realme UI battery management.
+* **Target Handset Context (Critical Hardware Defect):** The target device's physical volume rocker buttons are completely broken and non-functional. This app is not just a secondary convenience—it is the phone's primary, indispensable hardware volume controller.
+* **Media Stream Primacy Rule:** On modern smartphones with broken hardware keys, 99.9% of user volume adjustments are for media playback (YouTube, Spotify, games, podcasts, video calls). The app must default to Media (`STREAM_MUSIC`) at all times, auto-revert to Media after stream adjustments, and strictly prevent background notification alerts from hijacking the active stream.
 * **How It Must Feel to Use:** Always available but unobtrusive — an ultra-compact low-priority notification, no sound or heads-up pop, smooth snapping animation, tactile discrete volume steps, and direct UP/DOWN scrubbing that matches physical hardware rockers.
 
 ## 2. Active Features (Do Not Break)

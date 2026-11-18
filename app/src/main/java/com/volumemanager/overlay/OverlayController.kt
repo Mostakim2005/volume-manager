@@ -101,6 +101,11 @@ class OverlayController(
     private val autoDismissPanelRunnable = Runnable {
         closePopup()
         closePanel()
+        // Auto-revert back to Media stream so next time it is ready for media playback
+        if (activeStreamIndex != 0) {
+            activeStreamIndex = 0
+            lastDispatchedStep = -1
+        }
     }
     private val hideHudRunnable = Runnable {
         removeSafely(hud)
@@ -108,21 +113,18 @@ class OverlayController(
         hudParams = null
     }
 
-    // Hardware volume rocker sync receiver
+    // External volume sync receiver
     private val volumeChangeReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, intent: Intent) {
             val streamType = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
-            if (streamType != -1 && streamType in streams) {
-                val idx = streams.indexOf(streamType)
-                if (idx >= 0 && idx != activeStreamIndex) {
-                    activeStreamIndex = idx
-                    lastDispatchedStep = -1
-                }
+            // CRITICAL: Never let background broadcasts for Notification or Ring hijack activeStreamIndex
+            // away from Media! Only sync UI if the broadcast is for the currently active stream.
+            if (streamType == -1 || streamType == activeStream) {
+                val current = currentPercent(activeStream)
+                lastDispatchedStep = audioManager.getStreamVolume(activeStream)
+                syncPanelUi(current)
+                onVolumeChanged(current.roundToInt(), activeStreamName)
             }
-            val current = currentPercent(activeStream)
-            lastDispatchedStep = audioManager.getStreamVolume(activeStream)
-            syncPanelUi(current)
-            onVolumeChanged(current.roundToInt(), activeStreamName)
         }
     }
 
@@ -191,6 +193,7 @@ class OverlayController(
 
     /** Steps the active stream volume up (+1) or down (-1) by 10% increments. */
     fun stepVolume(deltaSteps: Int) {
+        autoFocusMediaIfActive()
         val current = currentPercent(activeStream)
         val target = (current + deltaSteps * 10f).coerceIn(0f, 100f)
         setPercent(target)
@@ -361,22 +364,35 @@ class OverlayController(
         // Scrubbing across the entire vertical panel: UP = louder, DOWN = quieter
         val handlePanelScrub: (View, MotionEvent) -> Boolean = { _, event ->
             resetAutoDismissPanel()
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                    val location = IntArray(2)
-                    trackFrame.getLocationOnScreen(location)
-                    val trackTop = location[1].toFloat()
-                    val trackH = trackFrame.height.takeIf { it > 0 }?.toFloat() ?: dp(104f).toFloat()
-                    val fraction = (1f - ((event.rawY - trackTop) / trackH)).coerceIn(0f, 1f)
-                    val percent = fraction * 100f
-                    setPercent(percent)
-                    true
+            val btnLocation = IntArray(2)
+            btnStream.getLocationOnScreen(btnLocation)
+            val btnRect = Rect(
+                btnLocation[0],
+                btnLocation[1],
+                btnLocation[0] + btnStream.width,
+                btnLocation[1] + btnStream.height,
+            )
+            // If touch is on the stream icon button, let the button receive the click event!
+            if (btnRect.contains(event.rawX.roundToInt(), event.rawY.roundToInt())) {
+                false
+            } else {
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                        val location = IntArray(2)
+                        trackFrame.getLocationOnScreen(location)
+                        val trackTop = location[1].toFloat()
+                        val trackH = trackFrame.height.takeIf { it > 0 }?.toFloat() ?: dp(104f).toFloat()
+                        val fraction = (1f - ((event.rawY - trackTop) / trackH)).coerceIn(0f, 1f)
+                        val percent = fraction * 100f
+                        setPercent(percent)
+                        true
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        lastDispatchedStep = audioManager.getStreamVolume(activeStream)
+                        true
+                    }
+                    else -> true
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    lastDispatchedStep = audioManager.getStreamVolume(activeStream)
-                    true
-                }
-                else -> true
             }
         }
         view.setOnTouchListener(handlePanelScrub)
@@ -547,6 +563,9 @@ class OverlayController(
             lastDispatchedStream = activeStream
             // Trap Guard: SecurityException on DND/Zen mode
             try {
+                if (target > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && audioManager.isStreamMute(activeStream)) {
+                    audioManager.adjustStreamVolume(activeStream, AudioManager.ADJUST_UNMUTE, 0)
+                }
                 audioManager.setStreamVolume(activeStream, target, 0)
             } catch (e: SecurityException) {
                 Log.w(TAG, "DND prevented setting volume: ${e.message}")

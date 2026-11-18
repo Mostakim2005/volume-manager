@@ -116,8 +116,18 @@ flowchart TD
 
 ### [TRAP: Wrong Audio Stream Targeted During Media Playback] | Aliases: volume not changing, youtube volume, notification stream trap
 > **1-Line Summary:** If active stream is set to Notification (`💬`), adjusting volume modifies notification tone levels, leaving YouTube / music volume completely unchanged.
-* **Avoidance:** Auto-focus `STREAM_MUSIC` whenever media is actively playing (`audioManager.isMusicActive`), default to Media stream, dynamically sync with hardware volume rocker broadcasts, and allow continuous panel scrubbing across the entire vertical surface.
+* **Avoidance:** Auto-focus `STREAM_MUSIC` whenever media is actively playing (`audioManager.isMusicActive`), default to Media stream, never let background notification broadcasts hijack the active stream, and auto-revert to Media after closing the panel.
 * **Anchors:** `OverlayController -> autoFocusMediaIfActive`, `openPanel`, `volumeChangeReceiver`.
+
+### [TRAP: Ephemeral CI Keystore Breaks Over-The-Air APK Updates] | Aliases: cannot update, install failed update incompatible, signature mismatch
+> **1-Line Summary:** Generating a new RSA keystore inside ephemeral CI containers causes every build to have a different signature, resulting in "Cannot update this app" (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`).
+* **Avoidance:** Store a permanent release keystore in GitHub repository secrets (`RELEASE_KEYSTORE_BASE64`) and local backup, so every release is signed with the identical cryptographic key.
+* **Anchors:** `.github/workflows/release.yml` -> `Prepare signing keystore`.
+
+### [TRAP: Root Touch Listener Starving Child Click Events On Overlay] | Aliases: popup menu not opening, stream icon click, touch intercept
+> **1-Line Summary:** Setting `view.setOnTouchListener` returning `true` on the panel root consumes `ACTION_DOWN` across the entire window, preventing children (like `btn_stream_icon`) from ever receiving click events.
+* **Avoidance:** Test if `event.rawX`/`rawY` intersects the child view's bounding rectangle (`Rect.contains`); if so, return `false` from the touch listener so the child receives its click cleanly.
+* **Anchors:** `OverlayController -> openPanel`, `btn_stream_icon`.
 
 ## 3. Verification Gate
 
