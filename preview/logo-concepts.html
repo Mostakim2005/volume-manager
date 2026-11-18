@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Volume Manager — App Logo & Launcher Icon Redesign Concepts</title>
+<style>
+  :root {
+    --orange: #ff6b3d;
+    --orange-dark: #f4511e;
+    --orange-glow: rgba(255, 107, 61, 0.45);
+    --green-accent: #10b981;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --bg-page: #f8fafc;
+    --surface: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    background: var(--bg-page);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  header {
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+    padding: 28px 32px 22px;
+  }
+  .header-wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { font-size: 26px; font-weight: 800; margin: 0 0 6px; letter-spacing: -0.5px; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; max-width: 880px; line-height: 1.5; }
+
+  /* Toolbar */
+  .toolbar-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff; border: 1px solid var(--line); border-radius: 16px;
+    padding: 14px 22px; max-width: 1280px; margin: 24px auto 0;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.02);
+  }
+  .view-toggles { display: flex; gap: 8px; flex-wrap: wrap; }
+  .view-btn {
+    background: #f1f5f9; border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 14px; font-size: 12px; font-weight: 700; color: var(--ink);
+    cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .view-btn:hover { background: #e2e8f0; }
+  .view-btn.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+
+  /* Concept Cards Grid */
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 22px;
+    max-width: 1280px;
+    margin: 24px auto 36px;
+    padding: 0 20px;
+  }
+
+  .concept-card {
+    background: #fff;
+    border: 2px solid var(--line);
+    border-radius: 22px;
+    padding: 20px 16px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+  }
+  .concept-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.09);
+    border-color: #cbd5e1;
+  }
+  .concept-card.selected {
+    border-color: var(--orange);
+    box-shadow: 0 0 0 3px rgba(255, 107, 61, 0.2), 0 16px 36px rgba(255, 107, 61, 0.15);
+  }
+  .badge-num {
+    position: absolute; top: 12px; left: 14px;
+    background: #f1f5f9; color: var(--muted);
+    font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 12px;
+  }
+  .concept-card.selected .badge-num { background: #fff7ed; color: #ea580c; }
+
+  /* Icon Canvas Wrappers */
+  .icon-preview-box {
+    width: 120px; height: 120px;
+    margin: 16px 0 14px;
+    display: grid; place-items: center;
+    transition: transform 0.2s ease;
+  }
+  .icon-preview-box svg {
+    width: 100%; height: 100%;
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.12));
+    transition: all 0.2s ease;
+  }
+  .concept-card:hover .icon-preview-box svg {
+    transform: scale(1.05);
+  }
+
+  /* Shape Switcher Classes */
+  .shape-squircle svg { border-radius: 28px; }
+  .shape-circle svg { border-radius: 50%; }
+  .shape-rounded svg { border-radius: 20px; }
+
+  .concept-title { font-size: 15px; font-weight: 800; margin: 4px 0 4px; color: #0f172a; }
+  .concept-tagline { font-size: 11px; font-weight: 600; color: #ea580c; margin-bottom: 8px; }
+  .concept-desc { font-size: 11px; line-height: 1.45; color: var(--muted); margin: 0; }
+
+  /* Home Screen Real-World Context Mockup */
+  .context-section {
+    max-width: 1280px; margin: 0 auto 60px; padding: 0 20px;
+  }
+  .context-card {
+    background: #fff; border: 1px solid var(--line); border-radius: 24px;
+    padding: 24px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  }
+  .context-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px;
+  }
+  .context-title { font-size: 17px; font-weight: 800; margin: 0; }
+
+  /* Phone Wallpaper Simulation */
+  .phone-shelf-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .launcher-row-card {
+    background: #1e293b;
+    border-radius: 20px;
+    padding: 20px 16px;
+    color: #fff;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+    background-size: cover;
+    background-position: center;
+  }
+  .launcher-row-card.wallpaper-dark {
+    background: linear-gradient(145deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+  }
+  .launcher-row-card.wallpaper-light {
+    background: linear-gradient(145deg, #e0e7ff 0%, #f1f5f9 50%, #fed7aa 100%);
+    color: #0f172a;
+  }
+  .row-label {
+    font-size: 12px; font-weight: 800; margin-bottom: 16px; opacity: 0.85;
+    display: flex; justify-content: space-between;
+  }
+  .launcher-dock {
+    display: flex; justify-content: space-between; align-items: flex-end;
+  }
+  .app-slot {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    font-size: 10px; font-weight: 600; width: 52px;
+  }
+  .app-slot-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: grid; place-items: center; font-size: 20px;
+  }
+  .app-slot-icon.app-chrome { background: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+  .app-slot-icon.app-spotify { background: #1ed760; color: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+  .app-slot-icon.app-camera { background: #3b82f6; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+  .app-slot-icon.app-whatsapp { background: #25d366; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+
+  .hero-volume-slot {
+    width: 48px; height: 48px;
+    filter: drop-shadow(0 6px 14px rgba(255, 107, 61, 0.4));
+  }
+  .hero-volume-slot svg { width: 100%; height: 100%; }
+
+  /* Comparison Banner */
+  .old-vs-new-banner {
+    display: flex; align-items: center; justify-content: center; gap: 24px;
+    background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 16px;
+    padding: 18px; margin-top: 24px;
+  }
+  .vs-badge { font-size: 13px; font-weight: 900; color: #94a3b8; }
+  .icon-wrapper-mini {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700;
+  }
+  .icon-wrapper-mini svg { width: 56px; height: 56px; }
+
+  /* Detail Card for Selected Icon */
+  .details-box {
+    margin-top: 24px; background: #fff7ed; border: 1.5px solid #ffedd5;
+    border-radius: 16px; padding: 18px 22px; color: #9a3412;
+  }
+  .details-box h3 { margin: 0 0 6px; font-size: 15px; font-weight: 800; color: #7c2d12; }
+  .details-box p { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: #9a3412; }
+  .details-features { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; font-weight: 700; }
+  .details-features span { display: inline-flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-wrap">
+    <h1>Volume Manager — App Logo & Launcher Icon Redesign</h1>
+    <p>The current icon used a legacy purple speaker inside a plain white circle. Below are <b>5 distinct, production-ready vector icon concepts</b> specifically designed for the Realme 6 / modern Android launcher. Click any icon to preview it live in the app drawer.</p>
+  </div>
+</header>
+
+<!-- Interactive Shape & Theme Switcher Toolbar -->
+<div class="toolbar-bar">
+  <div style="font-size: 13px; font-weight: 700; color: #334155;">
+    Launcher Mask Style:
+  </div>
+  <div class="view-toggles">
+    <button class="view-btn active" id="btnSquircle" onclick="setIconShape('squircle')">■ Realme Squircle</button>
+    <button class="view-btn" id="btnCircle" onclick="setIconShape('circle')">● Stock Circle</button>
+    <button class="view-btn" id="btnRounded" onclick="setIconShape('rounded')">▢ Smooth Rounded</button>
+  </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- 5 DISTINCT CONCEPTS GRID                                       -->
+<!-- ============================================================== -->
+<main class="grid-container" id="conceptsGrid">
+
+  <!-- Concept 1: The Sonic Capsule (Edge Pill + Sonic Wavebars) -->
+  <div class="concept-card selected" onclick="selectConcept(1)">
+    <div class="badge-num">CONCEPT 1</div>
+    <div class="icon-preview-box shape-squircle" id="boxConcept1">
+      <!-- SVG 1: Sonic Capsule -->
+      <svg viewBox="0 0 108 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="c1_bg" x1="0" y1="0" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FF7A6B"/>
+            <stop offset="100%" stop-color="#F4511E"/>
+          </linearGradient>
+          <linearGradient id="c1_pill" x1="28" y1="20" x2="80" y2="88" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.28"/>
+            <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+          </linearGradient>
+        </defs>
+        <rect width="108" height="108" fill="url(#c1_bg)"/>
+        <!-- Glass Capsule -->
+        <rect x="22" y="16" width="64" height="76" rx="32" fill="url(#c1_pill)" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="2.5"/>
+        <!-- Stepped Sound Waves inside capsule -->
+        <rect x="36" y="48" width="6" height="12" rx="3" fill="#FFFFFF"/>
+        <rect x="46" y="38" width="6" height="32" rx="3" fill="#FFFFFF"/>
+        <rect x="56" y="28" width="6" height="52" rx="3" fill="#FFFFFF"/>
+        <rect x="66" y="42" width="6" height="24" rx="3" fill="#FFFFFF" fill-opacity="0.95"/>
+      </svg>
+    </div>
+    <div class="concept-title">Sonic Capsule</div>
+    <div class="concept-tagline">Signature Edge Pill & Waves</div>
+    <p class="concept-desc">Mirrors the app's signature vertical edge pill housing dynamic acoustic stepped equalizer bars.</p>
+  </div>
+
+  <!-- Concept 2: Acoustic Dial (Rotary Arcs & Emerald Accent) -->
+  <div class="concept-card" onclick="selectConcept(2)">
+    <div class="badge-num">CONCEPT 2</div>
+    <div class="icon-preview-box shape-squircle" id="boxConcept2">
+      <!-- SVG 2: Acoustic Dial -->
+      <svg viewBox="0 0 108 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="c2_bg" x1="0" y1="0" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#1E293B"/>
+            <stop offset="100%" stop-color="#0F172A"/>
+          </linearGradient>
+          <linearGradient id="c2_arc" x1="30" y1="30" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FF7A6B"/>
+            <stop offset="100%" stop-color="#F4511E"/>
+          </linearGradient>
+        </defs>
+        <rect width="108" height="108" fill="url(#c2_bg)"/>
+        <!-- Concentric Calibrated Arcs -->
+        <circle cx="54" cy="54" r="36" stroke="#334155" stroke-width="4" stroke-linecap="round" stroke-dasharray="8 6"/>
+        <circle cx="54" cy="54" r="26" stroke="url(#c2_arc)" stroke-width="5" stroke-linecap="round" stroke-dasharray="110 50"/>
+        <!-- Speaker Cone Core -->
+        <path d="M42 46H48L56 38V70L48 62H42V46Z" fill="#FFFFFF"/>
+        <!-- Signature Green Ball Accent Thumb -->
+        <circle cx="78" cy="46" r="6" fill="#10B981" stroke="#FFFFFF" stroke-width="2"/>
+      </svg>
+    </div>
+    <div class="concept-title">Acoustic Dial</div>
+    <div class="concept-tagline">Precision Hardware Dial</div>
+    <p class="concept-desc">Deep slate backdrop with vibrant solar arcs and the signature green thumb bead from your notification redesign.</p>
+  </div>
+
+  <!-- Concept 3: Fluid Slider (The Rotated Vertical Slider) -->
+  <div class="concept-card" onclick="selectConcept(3)">
+    <div class="badge-num">CONCEPT 3</div>
+    <div class="icon-preview-box shape-squircle" id="boxConcept3">
+      <!-- SVG 3: Fluid Vertical Slider -->
+      <svg viewBox="0 0 108 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="c3_bg" x1="0" y1="0" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FF8A50"/>
+            <stop offset="100%" stop-color="#E64A19"/>
+          </linearGradient>
+          <linearGradient id="c3_fill" x1="38" y1="44" x2="70" y2="86" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FFFFFF"/>
+            <stop offset="100%" stop-color="#FFF0EB"/>
+          </linearGradient>
+        </defs>
+        <rect width="108" height="108" fill="url(#c3_bg)"/>
+        <!-- Vertical Slider Track Container -->
+        <rect x="36" y="16" width="36" height="76" rx="18" fill="#D83B0E" fill-opacity="0.4" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="2"/>
+        <!-- Fluid Level Fill -->
+        <rect x="38" y="44" width="32" height="46" rx="16" fill="url(#c3_fill)"/>
+        <!-- Tactile Slider Bead (Level Thumb) -->
+        <circle cx="54" cy="44" r="8" fill="#FFFFFF" stroke="#E64A19" stroke-width="3"/>
+        <!-- Level Tick Marks -->
+        <line x1="44" y1="28" x2="48" y2="28" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="2" stroke-linecap="round"/>
+        <line x1="44" y1="34" x2="48" y2="34" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="concept-title">Fluid Slider</div>
+    <div class="concept-tagline">The Rotated Volume Panel</div>
+    <p class="concept-desc">Direct 1:1 representation of the new vertical volume bar: filled level, tactile thumb bead, and step notches.</p>
+  </div>
+
+  <!-- Concept 4: Prism Speaker (Isometric Sound Chamber) -->
+  <div class="concept-card" onclick="selectConcept(4)">
+    <div class="badge-num">CONCEPT 4</div>
+    <div class="icon-preview-box shape-squircle" id="boxConcept4">
+      <!-- SVG 4: Prism Speaker -->
+      <svg viewBox="0 0 108 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="c4_bg" x1="0" y1="0" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FFFFFF"/>
+            <stop offset="100%" stop-color="#F1F5F9"/>
+          </linearGradient>
+          <linearGradient id="c4_cone" x1="24" y1="36" x2="60" y2="72" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FF7A6B"/>
+            <stop offset="100%" stop-color="#F4511E"/>
+          </linearGradient>
+          <linearGradient id="c4_wave1" x1="68" y1="38" x2="88" y2="70" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FF6B3D"/>
+            <stop offset="100%" stop-color="#E64A19"/>
+          </linearGradient>
+        </defs>
+        <rect width="108" height="108" fill="url(#c4_bg)"/>
+        <!-- Soft shadow -->
+        <ellipse cx="54" cy="88" rx="34" ry="7" fill="#CBD5E1" fill-opacity="0.6"/>
+        <!-- 3D Geometric Cone Body -->
+        <path d="M26 44H38L56 28V80L38 64H26V44Z" fill="url(#c4_cone)"/>
+        <!-- Facet highlight -->
+        <path d="M26 44H38L56 28V54H26V44Z" fill="#FFFFFF" fill-opacity="0.2"/>
+        <!-- Stepped Sonic Wave Arcs -->
+        <path d="M66 40C72 45 76 50 76 54C76 58 72 63 66 68" stroke="url(#c4_wave1)" stroke-width="5" stroke-linecap="round"/>
+        <path d="M78 30C87 38 92 46 92 54C92 62 87 70 78 78" stroke="url(#c4_wave1)" stroke-width="5" stroke-linecap="round" stroke-opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="concept-title">Prism Speaker</div>
+    <div class="concept-tagline">Isometric Acoustic Energy</div>
+    <p class="concept-desc">Clean bright ceramic tile background with a geometric faceted speaker emitting multi-tiered soundwaves.</p>
+  </div>
+
+  <!-- Concept 5: Sonic Minimalist Shield (Modern 'V' Arc) -->
+  <div class="concept-card" onclick="selectConcept(5)">
+    <div class="badge-num">CONCEPT 5</div>
+    <div class="icon-preview-box shape-squircle" id="boxConcept5">
+      <!-- SVG 5: Sonic Monogram -->
+      <svg viewBox="0 0 108 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="c5_bg" x1="0" y1="0" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FF6B3D"/>
+            <stop offset="100%" stop-color="#C2410C"/>
+          </linearGradient>
+        </defs>
+        <rect width="108" height="108" fill="url(#c5_bg)"/>
+        <!-- Stylized Bold 'V' + Acoustic Ring -->
+        <path d="M32 30L54 74L76 30" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- Centered Volume Ripple Dot -->
+        <circle cx="54" cy="40" r="5" fill="#FFFFFF"/>
+        <!-- Acoustic Crests -->
+        <path d="M42 22C46 19 50 18 54 18C58 18 62 19 66 22" stroke="#FFFFFF" stroke-opacity="0.75" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="concept-title">Sonic 'V'</div>
+    <div class="concept-tagline">Iconic Modern Monogram</div>
+    <p class="concept-desc">Minimalist emblem combining the letter 'V' (Volume) with high-resonance sonic wave arcs.</p>
+  </div>
+
+</main>
+
+<!-- ============================================================== -->
+<!-- REAL WORLD CONTEXT & COMPARISON                                -->
+<!-- ============================================================== -->
+<section class="context-section">
+  <div class="context-card">
+    <div class="context-header">
+      <h2 class="context-title">Live App Launcher Mockup (Realme 6)</h2>
+      <span style="font-size: 12px; color: var(--muted); font-weight: 600;">See how the selected icon sits alongside daily apps</span>
+    </div>
+
+    <div class="phone-shelf-container">
+      <!-- Dark Wallpaper Launcher Dock -->
+      <div class="launcher-row-card wallpaper-dark">
+        <div class="row-label">
+          <span>🌙 DARK WALLPAPER LAUNCHER</span>
+          <span>REALME UI 2.0</span>
+        </div>
+        <div class="launcher-dock">
+          <div class="app-slot"><div class="app-slot-icon app-chrome">🌐</div>Chrome</div>
+          <div class="app-slot"><div class="app-slot-icon app-spotify">🎧</div>Spotify</div>
+          <!-- Hero Volume Manager Icon -->
+          <div class="app-slot">
+            <div class="hero-volume-slot shape-squircle" id="dockSlotDark">
+              <!-- Replaced via JS -->
+            </div>
+            <span style="font-weight: 700; color: #ff8a50;">Vol Manager</span>
+          </div>
+          <div class="app-slot"><div class="app-slot-icon app-camera">📷</div>Camera</div>
+          <div class="app-slot"><div class="app-slot-icon app-whatsapp">💬</div>WhatsApp</div>
+        </div>
+      </div>
+
+      <!-- Light Wallpaper Launcher Dock -->
+      <div class="launcher-row-card wallpaper-light">
+        <div class="row-label">
+          <span>☀️ LIGHT WALLPAPER LAUNCHER</span>
+          <span>CLEAN CONTRAST</span>
+        </div>
+        <div class="launcher-dock">
+          <div class="app-slot"><div class="app-slot-icon app-chrome">🌐</div>Chrome</div>
+          <div class="app-slot"><div class="app-slot-icon app-spotify">🎧</div>Spotify</div>
+          <!-- Hero Volume Manager Icon -->
+          <div class="app-slot">
+            <div class="hero-volume-slot shape-squircle" id="dockSlotLight">
+              <!-- Replaced via JS -->
+            </div>
+            <span style="font-weight: 700; color: #c2410c;">Vol Manager</span>
+          </div>
+          <div class="app-slot"><div class="app-slot-icon app-camera">📷</div>Camera</div>
+          <div class="app-slot"><div class="app-slot-icon app-whatsapp">💬</div>WhatsApp</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Old vs New Comparison Banner -->
+    <div class="old-vs-new-banner">
+      <div class="icon-wrapper-mini">
+        <!-- Legacy Icon -->
+        <svg viewBox="0 0 108 108" fill="none">
+          <rect width="108" height="108" rx="28" fill="#FF6B3D"/>
+          <circle cx="54" cy="54" r="32" fill="#FFFFFF"/>
+          <path d="M42 46v16h8l10 10V36L50 46H42zM69 54c0-3.54-2-6.58-5-8v16c3-1.42 5-4.46 5-8z" fill="#5B4BE8"/>
+        </svg>
+        <span style="color: #ef4444;">Current (Dated)</span>
+      </div>
+
+      <div class="vs-badge">➔ UPGRADES TO ➔</div>
+
+      <div class="icon-wrapper-mini">
+        <div id="selectedMiniIcon" style="width: 56px; height: 56px;"></div>
+        <span style="color: #10b981;" id="selectedMiniTitle">Concept 1</span>
+      </div>
+    </div>
+
+    <!-- Dynamic Detail Box -->
+    <div class="details-box" id="detailsBox">
+      <h3 id="detailsTitle">Concept 1: Sonic Capsule</h3>
+      <p id="detailsDesc">Features a sleek vertical pill container embedded with stepped acoustic frequency wavebars. It visually reinforces the app's signature vertical edge handle.</p>
+      <div class="details-features">
+        <span>🎨 Palette: Solar Coral (#FF7A6B) to Deep Sunset (#F4511E)</span>
+        <span>⚡ Geometry: 28dp pill geometry with 4-tier sound level bars</span>
+        <span>✨ Best For: Instant recognition as an edge-docked sound utility</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+  let selectedConcept = 1;
+  let currentShape = 'squircle';
+
+  const conceptData = {
+    1: {
+      title: "Concept 1: Sonic Capsule",
+      tagline: "Signature Edge Pill & Waves",
+      desc: "Features a sleek vertical pill container embedded with stepped acoustic frequency wavebars. Directly represents the app's core feature: the vertical edge pill docked on the screen.",
+      palette: "Solar Coral (#FF7A6B) to Deep Sunset (#F4511E)",
+      geometry: "28dp pill geometry with 4-tier sound level bars",
+      bestFor: "Instant recognition as an edge-docked sound utility"
+    },
+    2: {
+      title: "Concept 2: Acoustic Dial",
+      tagline: "Precision Hardware Dial",
+      desc: "Combines a dark slate background with a high-contrast solar arc and the green accent ball from your redesigned notification scrubber.",
+      palette: "Deep Slate (#0F172A), Sunset Orange (#FF6B3D), Emerald (#10B981)",
+      geometry: "Calibrated radial tick ring with discrete thumb bead",
+      bestFor: "Tech-enthusiast aesthetic, looks like high-end audio gear"
+    },
+    3: {
+      title: "Concept 3: Fluid Slider",
+      tagline: "The Rotated Volume Panel",
+      desc: "A direct 1:1 visual of the vertical volume panel you just approved: vertical container, liquid level fill, step marks, and tactile thumb bead.",
+      palette: "Vibrant Orange (#FF8A50) to Rich Carmine (#E64A19) with Crisp White",
+      geometry: "Vertical capsule slider with floating level thumb",
+      bestFor: "Users who want the app icon to look exactly like the UI inside"
+    },
+    4: {
+      title: "Concept 4: Prism Speaker",
+      tagline: "Isometric Acoustic Energy",
+      desc: "A clean ceramic surface with a faceted 3D geometric speaker cone sending out progressive sound waves.",
+      palette: "Porcelain White (#FFFFFF) with Warm Amber & Coral (#FF7A6B)",
+      geometry: "Angled isometric speaker cone with drop shadow",
+      bestFor: "High contrast against dark and colorful wallpapers alike"
+    },
+    5: {
+      title: "Concept 5: Sonic 'V'",
+      tagline: "Iconic Modern Monogram",
+      desc: "A minimalist emblem merging the letter 'V' (Volume) with high-resonance sonic wave arcs forming a protective acoustic shield.",
+      palette: "Monochrome Coral Gradient (#FF6B3D to #C2410C)",
+      geometry: "Bold vector letterform + audio crests",
+      bestFor: "Ultra-clean, modern Swiss typography aesthetic"
+    }
+  };
+
+  function selectConcept(num) {
+    selectedConcept = num;
+    document.querySelectorAll('.concept-card').forEach((card, idx) => {
+      card.classList.toggle('selected', idx + 1 === num);
+    });
+
+    const activeSvg = document.getElementById('boxConcept' + num).querySelector('svg').cloneNode(true);
+
+    // Update Dock Slots
+    const dockDark = document.getElementById('dockSlotDark');
+    const dockLight = document.getElementById('dockSlotLight');
+    const miniIcon = document.getElementById('selectedMiniIcon');
+
+    dockDark.innerHTML = '';
+    dockDark.appendChild(activeSvg.cloneNode(true));
+
+    dockLight.innerHTML = '';
+    dockLight.appendChild(activeSvg.cloneNode(true));
+
+    miniIcon.innerHTML = '';
+    miniIcon.appendChild(activeSvg.cloneNode(true));
+
+    // Update Details Box
+    const data = conceptData[num];
+    document.getElementById('selectedMiniTitle').textContent = `Concept ${num}`;
+    document.getElementById('detailsTitle').textContent = data.title;
+    document.getElementById('detailsDesc').textContent = data.desc;
+    document.querySelector('.details-features').innerHTML = `
+      <span>🎨 Palette: ${data.palette}</span>
+      <span>⚡ Geometry: ${data.geometry}</span>
+      <span>✨ Best For: ${data.bestFor}</span>
+    `;
+  }
+
+  function setIconShape(shape) {
+    currentShape = shape;
+    document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('btn' + shape.charAt(0).toUpperCase() + shape.slice(1)).classList.add('active');
+
+    const boxes = document.querySelectorAll('.icon-preview-box, .hero-volume-slot');
+    boxes.forEach(box => {
+      box.className = box.className.replace(/shape-\w+/g, 'shape-' + shape);
+    });
+  }
+
+  // Initialize
+  selectConcept(1);
+</script>
+</body>
+</html>
