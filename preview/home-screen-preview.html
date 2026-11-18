@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Volume Manager — Home Screen & Overlay Interaction Preview</title>
+<style>
+  :root {
+    --orange: #ff6b3d;
+    --orange-dark: #f4511e;
+    --salmon: #ff7a6b;
+    --ink: #1f2029;
+    --muted: #69697a;
+    --line: #e2e4ea;
+    --surface: #ffffff;
+    --bg-page: #f0f2f7;
+    --chip-bg: #fafafd;
+    --pill-blue: #3b82f6;
+    --green: #10b981;
+    --red: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    background: var(--bg-page);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Page Header */
+  header {
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+    padding: 24px 32px 20px;
+  }
+  .header-wrap { max-width: 1240px; margin: 0 auto; }
+  h1 { font-size: 24px; font-weight: 800; margin: 0 0 6px; letter-spacing: -0.4px; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; max-width: 860px; line-height: 1.5; }
+  .badge-bar { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+    background: #f1f3f9; color: var(--muted);
+  }
+  .badge.orange { background: #fff1eb; color: var(--orange-dark); }
+  .badge.blue { background: #ebf5ff; color: var(--pill-blue); }
+  .badge.green { background: #ecfdf5; color: var(--green); }
+
+  /* Main Grid */
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 28px;
+    max-width: 1240px;
+    margin: 28px auto 60px;
+    padding: 0 20px;
+  }
+
+  /* Stage Card */
+  .stage-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 20px;
+    box-shadow: 0 10px 28px rgba(20, 24, 48, 0.05);
+    display: flex;
+    flex-direction: column;
+  }
+  .stage-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f0f1f5;
+  }
+  .stage-title { font-size: 16px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .tag {
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 3px 8px; border-radius: 6px;
+  }
+  .tag.current { background: #fee2e2; color: #b91c1c; }
+  .tag.option-a { background: #eff6ff; color: #1d4ed8; }
+  .tag.option-b { background: #ecfdf5; color: #047857; }
+
+  /* Interactive Simulator Phone */
+  .phone-frame {
+    position: relative;
+    width: 320px;
+    height: 640px;
+    margin: 0 auto;
+    border: 9px solid #1a1a24;
+    border-radius: 40px;
+    overflow: hidden;
+    background: #0f172a;
+    box-shadow: 0 22px 50px rgba(15, 23, 42, 0.25);
+    user-select: none;
+  }
+
+  /* Screen Wallpaper & Status Bar */
+  .phone-wallpaper {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(180px 140px at 15% 15%, rgba(255, 107, 61, 0.85), transparent 75%),
+      radial-gradient(220px 180px at 85% 20%, rgba(99, 102, 241, 0.8), transparent 75%),
+      radial-gradient(240px 200px at 50% 75%, rgba(14, 165, 233, 0.65), transparent 75%),
+      linear-gradient(165deg, #1e293b, #0f172a);
+  }
+  .punch-hole {
+    position: absolute; top: 12px; left: 20px; width: 14px; height: 14px;
+    background: #000; border-radius: 50%; z-index: 20;
+    box-shadow: 0 0 2px rgba(255,255,255,0.2);
+  }
+  .status-bar {
+    position: absolute; top: 10px; left: 42px; right: 20px; height: 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    color: #fff; font-size: 11px; font-weight: 600; z-index: 10;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+  .status-icons { display: flex; gap: 6px; font-size: 10px; }
+
+  /* Mock Launcher Icons */
+  .mock-launcher {
+    position: absolute; inset: 54px 16px 20px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    pointer-events: none;
+  }
+  .mock-widget {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 18px; padding: 16px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  .mock-time { font-size: 32px; font-weight: 300; }
+  .mock-date { font-size: 12px; opacity: 0.8; }
+  .mock-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: auto; padding-bottom: 24px;
+  }
+  .mock-app {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    color: #fff; font-size: 10px; font-weight: 500;
+  }
+  .mock-app-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: grid; place-items: center; font-size: 18px;
+    background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.25);
+  }
+  .gesture-bar {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    width: 90px; height: 4px; background: rgba(255,255,255,0.6); border-radius: 2px;
+  }
+
+  /* Overlay Trigger Handle */
+  .overlay-handle {
+    position: absolute;
+    width: 44px; height: 44px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, #ff7a6b, #f4511e);
+    box-shadow: 0 4px 16px rgba(244, 81, 30, 0.45), 0 0 0 1px rgba(255,255,255,0.25);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #fff; font-size: 16px; cursor: grab; z-index: 30;
+    transition: opacity 0.3s ease, transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.2s;
+  }
+  .overlay-handle:active { cursor: grabbing; transform: scale(1.06); }
+  .overlay-handle.idle-dim { opacity: 0.32 !important; }
+  .overlay-handle .sub-icon { font-size: 9px; line-height: 1; margin-top: 1px; font-weight: 800; opacity: 0.9; }
+
+  /* Option B Long-press Ring */
+  .long-press-ring {
+    position: absolute; inset: -4px; border-radius: 50%;
+    border: 2px dashed #fff; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .overlay-handle.reposition-mode {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.7);
+  }
+  .overlay-handle.reposition-mode .long-press-ring { opacity: 1; animation: spinRing 4s linear infinite; }
+  @keyframes spinRing { to { transform: rotate(360deg); } }
+
+  /* Floating Volume HUD Tooltip (New Option A/B) */
+  .volume-hud {
+    position: absolute;
+    height: 38px;
+    background: rgba(22, 22, 34, 0.94);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 19px;
+    padding: 0 14px 0 10px;
+    display: flex; align-items: center; gap: 8px;
+    color: #fff; font-size: 12px; font-weight: 700;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    z-index: 35;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .volume-hud .hud-icon {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--orange); display: grid; place-items: center; font-size: 12px;
+  }
+  .volume-hud .hud-bars {
+    width: 48px; height: 6px; background: rgba(255,255,255,0.2);
+    border-radius: 3px; overflow: hidden; position: relative;
+  }
+  .volume-hud .hud-fill {
+    height: 100%; background: var(--orange); border-radius: 3px;
+    transition: width 0.08s ease-out;
+  }
+
+  /* Compact Volume Chip */
+  .volume-chip {
+    position: absolute;
+    width: 176px;
+    background: #fafafd;
+    border: 1px solid #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(10, 15, 35, 0.28);
+    padding: 10px;
+    z-index: 40;
+    font-size: 11px;
+    color: #2c2c3a;
+    transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.25s ease;
+  }
+  .chip-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  .chip-stream {
+    font-size: 10px; font-weight: 800; color: #4b4b5b; cursor: pointer;
+    display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px;
+  }
+  .chip-stream:hover { background: #f0f0f5; }
+  .chip-percent { font-size: 11px; font-weight: 800; color: #2c2c3a; }
+  .chip-options {
+    display: flex; gap: 3px; margin: 6px 0; background: #f2f2f7; padding: 3px; border-radius: 8px;
+  }
+  .stream-opt {
+    flex: 1; text-align: center; font-size: 9px; font-weight: 700;
+    padding: 4px 0; border-radius: 6px; color: var(--orange); cursor: pointer;
+  }
+  .stream-opt.active { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .chip-seek-track {
+    width: 100%; height: 6px; background: #e5e5ed; border-radius: 3px;
+    position: relative; margin: 8px 0 4px; cursor: pointer;
+  }
+  .chip-seek-fill {
+    height: 100%; background: linear-gradient(90deg, #ff7a6b, #f4511e); border-radius: 3px;
+  }
+  .chip-seek-thumb {
+    position: absolute; top: -5px; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; border: 2px solid #ff6b3d; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transform: translateX(-50%);
+  }
+  .chip-close-btn {
+    display: inline-block; cursor: pointer; color: #9494a5; font-size: 11px;
+    padding: 0 4px; line-height: 1;
+  }
+  .chip-close-btn:hover { color: var(--red); }
+
+  /* Gesture Exclusion Zone Visualizer */
+  .gesture-exclusion-box {
+    position: absolute; left: 0; width: 44px; height: 80px;
+    border: 1px dashed rgba(16, 185, 129, 0.8);
+    background: rgba(16, 185, 129, 0.12);
+    border-radius: 8px; pointer-events: none; z-index: 25;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; color: #10b981; font-weight: 800; text-align: center;
+  }
+
+  /* Control Panel Below Mock */
+  .stage-controls {
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid #f0f1f5;
+  }
+  .control-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; font-size: 12px; color: var(--muted);
+  }
+  .btn-action {
+    background: #f1f3f9; border: 1px solid var(--line); border-radius: 8px;
+    padding: 6px 12px; font-size: 12px; font-weight: 700; color: var(--ink);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-action:hover { background: #e6e9f2; }
+  .btn-action.active { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+
+  /* Explanation Notes */
+  .notes-box {
+    margin-top: 16px; background: #fbfbfd; border: 1px solid #ebebf0;
+    border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.5; color: #4b4b5b;
+  }
+  .notes-box b { color: #1f2029; }
+  .notes-box ul { margin: 6px 0 0; padding-left: 18px; }
+  .notes-box li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-wrap">
+    <h1>Volume Manager — Home Screen & In-App Overlay Previews</h1>
+    <p>Visualizing the floating trigger pill, gesture conflicts, volume scrubbing, and overlay chip behavior on the Realme 6. Compare the current implementation against proposed refinements.</p>
+    <div class="badge-bar">
+      <span class="badge orange">● Orange = Floating Edge Pill</span>
+      <span class="badge blue">● Blue = Reposition State (Option B)</span>
+      <span class="badge green">● Green Dashed = System Gesture Exclusion Rect</span>
+    </div>
+  </div>
+</header>
+
+<main class="grid-container">
+
+  <!-- ============================================================== -->
+  <!-- 1. CURRENT IMPLEMENTATION (Commit 4d66ec0)                      -->
+  <!-- ============================================================== -->
+  <div class="stage-card">
+    <div class="stage-header">
+      <h2 class="stage-title">Current Implementation <span class="tag current">As-Is (Commit 4d66ec0)</span></h2>
+    </div>
+
+    <div class="phone-frame" id="phoneCurrent">
+      <div class="phone-wallpaper"></div>
+      <div class="punch-hole"></div>
+      <div class="status-bar">
+        <span>17:00</span>
+        <div class="status-icons"><span>LTE</span><span>▮ 82%</span></div>
+      </div>
+
+      <div class="mock-launcher">
+        <div class="mock-widget">
+          <div class="mock-time">17:00</div>
+          <div class="mock-date">Wednesday, Nov 18</div>
+        </div>
+        <div class="mock-grid">
+          <div class="mock-app"><div class="mock-app-icon">📞</div>Phone</div>
+          <div class="mock-app"><div class="mock-app-icon">💬</div>Chat</div>
+          <div class="mock-app"><div class="mock-app-icon">🌐</div>Web</div>
+          <div class="mock-app"><div class="mock-app-icon">🎵</div>Music</div>
+        </div>
+      </div>
+      <div class="gesture-bar"></div>
+
+      <!-- Handle -->
+      <div class="overlay-handle" id="handleCurrent" style="top: 220px; left: 0px;" title="Drag up/down for volume; pull horizontally to move; tap to open chip">
+        <span>◁))</span>
+        <span class="sub-icon">↕</span>
+      </div>
+
+      <!-- Chip (Hidden by default, toggled via tap) -->
+      <div class="volume-chip" id="chipCurrent" style="top: 210px; left: 52px; display: none;">
+        <div class="chip-header">
+          <span class="chip-stream" id="streamCurrent">Media ▾</span>
+          <span class="chip-percent" id="pctCurrent">50%</span>
+        </div>
+        <div class="chip-seek-track" id="trackCurrent">
+          <div class="chip-seek-fill" id="fillCurrent" style="width: 50%;"></div>
+          <div class="chip-seek-thumb" id="thumbCurrent" style="left: 50%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage-controls">
+      <div class="control-row">
+        <span>Chip State:</span>
+        <button class="btn-action" onclick="toggleChip('Current')">Toggle Chip</button>
+      </div>
+      <div class="control-row">
+        <span>Interactive Hint:</span>
+        <span style="font-weight: 600; color: #b91c1c;">Tap pill to open chip</span>
+      </div>
+    </div>
+
+    <div class="notes-box">
+      <b>Identified Traps in Current Version:</b>
+      <ul>
+        <li><b>Silent Volume Jumps:</b> Vertical drag changes volume without any HUD or tooltip showing the new level.</li>
+        <li><b>Gesture Ambiguity:</b> Dragging vertically along the edge changes volume instead of repositioning the handle.</li>
+        <li><b>No Dismiss Path:</b> Chip has no close button, no outside-tap dismiss, and never auto-closes.</li>
+        <li><b>Edge Navigation Clash:</b> Swiping the pill triggers Android's "Back" arrow gesture.</li>
+      </ul>
+    </div>
+  </div>
+
+
+  <!-- ============================================================== -->
+  <!-- 2. OPTION A: REFINED CURRENT + FLOATING HUD + IDLE FADE        -->
+  <!-- ============================================================== -->
+  <div class="stage-card">
+    <div class="stage-header">
+      <h2 class="stage-title">Option A: Refined with HUD <span class="tag option-a">Recommended</span></h2>
+    </div>
+
+    <div class="phone-frame" id="phoneOptionA">
+      <div class="phone-wallpaper"></div>
+      <div class="punch-hole"></div>
+      <div class="status-bar">
+        <span>17:00</span>
+        <div class="status-icons"><span>LTE</span><span>▮ 82%</span></div>
+      </div>
+
+      <div class="mock-launcher">
+        <div class="mock-widget">
+          <div class="mock-time">17:00</div>
+          <div class="mock-date">Wednesday, Nov 18</div>
+        </div>
+        <div class="mock-grid">
+          <div class="mock-app"><div class="mock-app-icon">📞</div>Phone</div>
+          <div class="mock-app"><div class="mock-app-icon">💬</div>Chat</div>
+          <div class="mock-app"><div class="mock-app-icon">🌐</div>Web</div>
+          <div class="mock-app"><div class="mock-app-icon">🎵</div>Music</div>
+        </div>
+      </div>
+      <div class="gesture-bar"></div>
+
+      <!-- Gesture Exclusion Zone Box Visualizer -->
+      <div class="gesture-exclusion-box" style="top: 202px; left: 0px;" title="Android 10+ setSystemGestureExclusionRects prevents accidental Back gesture">
+        NO BACK<br/>SWIPE
+      </div>
+
+      <!-- Handle with Idle Dimming -->
+      <div class="overlay-handle" id="handleOptionA" style="top: 220px; left: 0px;" title="Tap to toggle chip; drag ↕ for volume with HUD">
+        <span>◁))</span>
+        <span class="sub-icon">↕</span>
+      </div>
+
+      <!-- Floating HUD Tooltip -->
+      <div class="volume-hud" id="hudOptionA" style="top: 223px; left: 54px; opacity: 0; transform: scale(0.9);">
+        <div class="hud-icon">🔉</div>
+        <span>Media: <span id="hudPctA">60%</span></span>
+        <div class="hud-bars"><div class="hud-fill" id="hudFillA" style="width: 60%;"></div></div>
+      </div>
+
+      <!-- Chip with Close Button & Outside Tap Dismiss -->
+      <div class="volume-chip" id="chipOptionA" style="top: 210px; left: 52px; display: none;">
+        <div class="chip-header">
+          <span class="chip-stream" id="streamA" onclick="toggleStreamOptions('A')">Media ▾</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="chip-percent" id="pctA">60%</span>
+            <span class="chip-close-btn" onclick="closeChip('A')" title="Close">✕</span>
+          </div>
+        </div>
+        <div class="chip-options" id="optsA" style="display: none;">
+          <span class="stream-opt active">Media</span>
+          <span class="stream-opt">Ring</span>
+          <span class="stream-opt">Alarm</span>
+          <span class="stream-opt">Notify</span>
+        </div>
+        <div class="chip-seek-track" id="trackA">
+          <div class="chip-seek-fill" id="fillA" style="width: 60%;"></div>
+          <div class="chip-seek-thumb" id="thumbA" style="left: 60%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage-controls">
+      <div class="control-row">
+        <span>Interactive Scrub:</span>
+        <input type="range" min="0" max="100" value="60" step="10" oninput="scrubVolumeA(this.value)" style="width: 140px;" />
+      </div>
+      <div class="control-row">
+        <span>Simulate Inactivity:</span>
+        <button class="btn-action" id="btnIdleA" onclick="toggleIdle('A')">Toggle Idle Fade (30%)</button>
+      </div>
+    </div>
+
+    <div class="notes-box">
+      <b>Why Option A Solves the Problems:</b>
+      <ul>
+        <li><b>Instant Visual HUD:</b> Vertical drag pops up a capsule tooltip showing stream name and percentage.</li>
+        <li><b>Gesture Exclusion:</b> Excludes Android's edge gesture zone so dragging never triggers Back.</li>
+        <li><b>Smart Auto-Dismiss:</b> Tapping outside or idling for 4s collapses the chip automatically.</li>
+        <li><b>Idle Fade:</b> Smoothly dims to 30% alpha when untouched, eliminating screen distraction.</li>
+      </ul>
+    </div>
+  </div>
+
+
+  <!-- ============================================================== -->
+  <!-- 3. OPTION B: LONG-PRESS REPOSITION MODE                         -->
+  <!-- ============================================================== -->
+  <div class="stage-card">
+    <div class="stage-header">
+      <h2 class="stage-title">Option B: Long-Press Reposition <span class="tag option-b">Distinct Modes</span></h2>
+    </div>
+
+    <div class="phone-frame" id="phoneOptionB">
+      <div class="phone-wallpaper"></div>
+      <div class="punch-hole"></div>
+      <div class="status-bar">
+        <span>17:00</span>
+        <div class="status-icons"><span>LTE</span><span>▮ 82%</span></div>
+      </div>
+
+      <div class="mock-launcher">
+        <div class="mock-widget">
+          <div class="mock-time">17:00</div>
+          <div class="mock-date">Wednesday, Nov 18</div>
+        </div>
+        <div class="mock-grid">
+          <div class="mock-app"><div class="mock-app-icon">📞</div>Phone</div>
+          <div class="mock-app"><div class="mock-app-icon">💬</div>Chat</div>
+          <div class="mock-app"><div class="mock-app-icon">🌐</div>Web</div>
+          <div class="mock-app"><div class="mock-app-icon">🎵</div>Music</div>
+        </div>
+      </div>
+      <div class="gesture-bar"></div>
+
+      <!-- Handle with Mode Switch -->
+      <div class="overlay-handle" id="handleOptionB" style="top: 220px; left: 0px;" title="Short swipe = volume; Long press (300ms) = move handle freely">
+        <div class="long-press-ring"></div>
+        <span id="handleIconB">◁))</span>
+        <span class="sub-icon" id="handleSubB">↕</span>
+      </div>
+
+      <!-- Floating HUD -->
+      <div class="volume-hud" id="hudOptionB" style="top: 223px; left: 54px; opacity: 0; transform: scale(0.9);">
+        <div class="hud-icon">🔉</div>
+        <span>Media: <span id="hudPctB">70%</span></span>
+        <div class="hud-bars"><div class="hud-fill" id="hudFillB" style="width: 70%;"></div></div>
+      </div>
+
+      <!-- Chip -->
+      <div class="volume-chip" id="chipOptionB" style="top: 210px; left: 52px; display: none;">
+        <div class="chip-header">
+          <span class="chip-stream">Media ▾</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="chip-percent">70%</span>
+            <span class="chip-close-btn" onclick="closeChip('B')">✕</span>
+          </div>
+        </div>
+        <div class="chip-seek-track">
+          <div class="chip-seek-fill" style="width: 70%;"></div>
+          <div class="chip-seek-thumb" style="left: 70%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage-controls">
+      <div class="control-row">
+        <span>Simulate Long-Press (300ms):</span>
+        <button class="btn-action" id="btnModeB" onclick="toggleRepositionModeB()">Toggle Reposition Mode</button>
+      </div>
+      <div class="control-row">
+        <span>Status:</span>
+        <span id="modeStatusB" style="font-weight: 700; color: #4b4b5b;">Standard (Volume Scrub)</span>
+      </div>
+    </div>
+
+    <div class="notes-box">
+      <b>How Option B Operates:</b>
+      <ul>
+        <li><b>Zero Gesture Ambiguity:</b> Normal vertical drag strictly scrubs volume; cannot accidentally move the pill.</li>
+        <li><b>Long-Press Unlock:</b> Holding for 300ms pulses the pill blue and enables free 2D dragging anywhere along edges.</li>
+        <li><b>Haptic Confirmation:</b> Haptic tick confirms when reposition mode engages and disengages.</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // Current Chip Toggle
+  function toggleChip(id) {
+    const chip = document.getElementById('chip' + id);
+    chip.style.display = chip.style.display === 'none' ? 'block' : 'none';
+  }
+  function closeChip(id) {
+    document.getElementById('chip' + id).style.display = 'none';
+  }
+
+  // Handle click to toggle chip
+  document.getElementById('handleCurrent').addEventListener('click', () => toggleChip('Current'));
+  document.getElementById('handleOptionA').addEventListener('click', () => toggleChip('OptionA'));
+  document.getElementById('handleOptionB').addEventListener('click', () => toggleChip('OptionB'));
+
+  // Option A Volume Scrub with HUD
+  let hudTimeoutA;
+  function scrubVolumeA(val) {
+    const hud = document.getElementById('hudOptionA');
+    const pct = document.getElementById('hudPctA');
+    const fill = document.getElementById('hudFillA');
+    const chipPct = document.getElementById('pctA');
+    const chipFill = document.getElementById('fillA');
+    const chipThumb = document.getElementById('thumbA');
+
+    pct.textContent = val + '%';
+    fill.style.width = val + '%';
+    chipPct.textContent = val + '%';
+    chipFill.style.width = val + '%';
+    chipThumb.style.left = val + '%';
+
+    hud.style.opacity = '1';
+    hud.style.transform = 'scale(1)';
+    clearTimeout(hudTimeoutA);
+    hudTimeoutA = setTimeout(() => {
+      hud.style.opacity = '0';
+      hud.style.transform = 'scale(0.9)';
+    }, 1500);
+  }
+
+  // Option A Stream Options
+  function toggleStreamOptions(id) {
+    const opts = document.getElementById('opts' + id);
+    opts.style.display = opts.style.display === 'none' ? 'flex' : 'none';
+  }
+
+  // Idle Fade Simulation
+  function toggleIdle(id) {
+    const handle = document.getElementById('handleOption' + id);
+    const btn = document.getElementById('btnIdle' + id);
+    handle.classList.toggle('idle-dim');
+    btn.classList.toggle('active');
+  }
+
+  // Option B Reposition Mode Toggle
+  let isRepositionB = false;
+  function toggleRepositionModeB() {
+    isRepositionB = !isRepositionB;
+    const handle = document.getElementById('handleOptionB');
+    const status = document.getElementById('modeStatusB');
+    const icon = document.getElementById('handleIconB');
+    const sub = document.getElementById('handleSubB');
+    const btn = document.getElementById('btnModeB');
+
+    if (isRepositionB) {
+      handle.classList.add('reposition-mode');
+      icon.textContent = '✥';
+      sub.textContent = 'MOVE';
+      status.textContent = 'Repositioning (Free Move)';
+      status.style.color = '#2563eb';
+      btn.classList.add('active');
+    } else {
+      handle.classList.remove('reposition-mode');
+      icon.textContent = '◁))';
+      sub.textContent = '↕';
+      status.textContent = 'Standard (Volume Scrub)';
+      status.style.color = '#4b4b5b';
+      btn.classList.remove('active');
+    }
+  }
+</script>
+</body>
+</html>

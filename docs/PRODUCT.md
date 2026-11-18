@@ -2,7 +2,7 @@
 > **1-Line Summary:** The permanent source of truth for what the Realme 6 volume utility must do and how it should feel, independent of the current implementation.
 
 ## 1. Core Vision & User Experience Intent
-* **What This App Does (Plain English):** Provides a floating edge pill that docks to the left or right of the screen and expands into a card of stepped volume sliders, staying alive across reboots and aggressive Realme UI battery management.
+* **What This App Does (Plain English):** Provides a floating edge pill that docks to the left or right of the screen and expands into a compact stepped volume chip, staying alive across reboots and aggressive Realme UI battery management.
 * **How It Must Feel to Use:** Always available but unobtrusive — a silent low-priority notification, no sound or heads-up pop, smooth snapping animation, and tactile discrete volume steps that are repeatable rather than fiddly.
 
 ## 2. Active Features (Do Not Break)
@@ -17,16 +17,16 @@
 
 ### [FEATURE: Compact Volume Chip] | Aliases: small overlay, bar only, movable chip, stream selector
 > **1-Line Summary:** A tiny movable chip containing only a 10-step SeekBar and a tappable stream label that expands Media / Ring / Alarm / Notify. No +/- buttons.
-* **User Intention (Non-Negotiable):** Keep the UI minimal — dragging is the only volume gesture; the chip can be dragged anywhere on screen.
+* **User Intention (Non-Negotiable):** Keep the UI minimal — dragging is the primary volume gesture; the chip can be dragged anywhere on screen.
 * **Visual / UI Behavior:** `SeekBar` max 10, each step = 10%; percentage shown beside the stream label; whole chip draggable except the bar and label; options expand inline when the label is tapped.
 * **Code Anchors:**
   * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `openChip`, `attachChipDrag`, `setPercent`, `positionChip`
   * `app/src/main/res/layout/volume_chip.xml` -> `chip_seek`, `chip_stream`, `chip_options`
 
 ### [FEATURE: Persistent Foreground Service] | Aliases: notification, keep-alive, START_STICKY
-> **1-Line Summary:** A silent foreground service with a low-importance notification and quick volume actions that keeps the overlay alive.
+> **1-Line Summary:** A silent foreground service with a low-importance notification that keeps the overlay process alive.
 * **User Intention (Non-Negotiable):** The utility must survive memory pressure and not be killed by Realme UI's background restrictions.
-* **Visual / UI Behavior:** `IMPORTANCE_LOW` channel (no sound, no badge), ongoing single-row notification showing "Edge volume · NN%" with a thin progress strip and no action buttons; tapping the row toggles the chip.
+* **Visual / UI Behavior:** `IMPORTANCE_LOW` channel (no sound, no badge), ongoing single-row notification showing active volume percentage with a progress strip; tapping the row toggles the chip.
 * **Code Anchors:**
   * `app/src/main/java/com/volumemanager/OverlayVolumeService.kt` -> `onCreate`, `onStartCommand`, `buildNotification`, `scheduleNotificationRefresh`
   * `app/src/main/res/layout/notification_volume.xml` -> `notif_status`, `notif_progress`, `notif_root`
@@ -49,12 +49,32 @@
 
 ## 3. Planned Features & App-Merge Wishlist
 
+### [WISHLIST: Hardware Volume Rocker Sync] | Aliases: hardware keys sync, system volume listener, VOLUME_CHANGED_ACTION
+> **1-Line Summary:** Register a dynamic receiver for `android.media.VOLUME_CHANGED_ACTION` so external volume changes keep the overlay and notification in sync.
+* **User Intention:** When adjusting volume via physical rocker buttons or Bluetooth headphones, the chip and notification must reflect the change instantly.
+* **Target Integration Point:** `OverlayVolumeService -> onCreate` / `onDestroy`.
+
+### [WISHLIST: Android 10+ Gesture Exclusion Rects] | Aliases: no back swipe conflict, exclusion rect, setSystemGestureExclusionRects
+> **1-Line Summary:** Register the handle's bounding box with `View.setSystemGestureExclusionRects()` on API 29+ to avoid triggering Android's system Back gesture.
+* **User Intention:** Swiping on or near the edge pill must not accidentally trigger system Back navigation.
+* **Target Integration Point:** `OverlayController -> snapToEdge`, `updateSafely`.
+
+### [WISHLIST: Smart Chip Auto-Dismiss & Idle Dimming] | Aliases: outside tap dismiss, idle opacity, auto collapse
+> **1-Line Summary:** Auto-collapse the chip after 4 seconds of inactivity or on outside tap, and fade the edge handle to 30% alpha when idle.
+* **User Intention:** Prevent the overlay from obstructing full-screen games or video content.
+* **Target Integration Point:** `OverlayController -> openChip`, `attachHandleTouch`.
+
+### [WISHLIST: Floating Volume HUD Capsule] | Aliases: volume tooltip, drag feedback, on-screen display
+> **1-Line Summary:** Display a transient floating HUD tooltip next to the handle while dragging vertically to give real-time volume feedback.
+* **User Intention:** Provide immediate visual confirmation of the new volume level without opening the full chip.
+* **Target Integration Point:** `OverlayController -> attachHandleTouch`.
+
+### [WISHLIST: Theme-Adaptive Dark Mode Notification] | Aliases: notification dark mode fix, contrast compliance
+> **1-Line Summary:** Replace hardcoded `#1A1A24` text with theme-adaptive resources so notification text is clear in both Light and Dark themes.
+* **User Intention:** Maintain WCAG AAA readability in dark mode without text disappearing into the shade background.
+* **Target Integration Point:** `app/src/main/res/layout/notification_volume.xml`.
+
 ### [WISHLIST: LoudnessEnhancer Fine Attenuation] | Aliases: sub-step precision, decibel trim
 > **1-Line Summary:** Use `LoudnessEnhancer` on session 0 to attenuate between the 15 hardware steps for finer media control.
 * **User Intention:** Make 10% steps feel less coarse on music playback.
-* **Target Integration Point:** `OverlayController -> bindSliders`, behind a user setting.
-
-### [WISHLIST: Notification Compact Sliders] | Aliases: RemoteViews seek bar, shade controls
-> **1-Line Summary:** Add actual `RemoteViews` progress bars to the notification for quick volume changes without expanding the overlay.
-* **User Intention:** One-thumb control directly from the shade.
-* **Target Integration Point:** `OverlayVolumeService -> buildNotification`.
+* **Target Integration Point:** `OverlayController -> setPercent`, behind a user setting.

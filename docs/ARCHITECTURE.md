@@ -9,8 +9,8 @@ flowchart TD
     ACT[MainActivity] -->|start/stop| SVC
     SVC -->|creates + owns| OC[OverlayController]
     SVC -->|IMPORTANCE_LOW ongoing notification| NOTIF[Notification shade]
-    OC -->|TYPE_APPLICATION_OVERLAY| HANDLE[Edge pill window]
-    OC -->|TYPE_APPLICATION_OVERLAY| PANEL[Volume card window]
+    OC -->|TYPE_APPLICATION_OVERLAY| HANDLE[Edge trigger pill window]
+    OC -->|TYPE_APPLICATION_OVERLAY| CHIP[Compact volume chip window]
     OC -->|setStreamVolume| AUDIO[AudioManager streams]
     ACT -->|deep links| OEM[Realme UI / Android settings]
     OEM -.->|overlay permission, auto-launch, battery| BOOT
@@ -19,7 +19,7 @@ flowchart TD
 ### [SUBSYSTEM: Foreground Service Lifecycle] | Aliases: startForeground, START_STICKY, notification
 > **1-Line Summary:** The service is the process anchor: it posts the notification first, then creates the controller, and is recreated by Android after low-memory kills.
 * `onCreate()` creates the channel, calls `startForeground(NOTIFICATION_ID, ...)` immediately, then builds `OverlayController` and calls `show()`.
-* `onStartCommand()` handles notification actions (media ±, panel toggle, stop) and returns `START_STICKY`.
+* `onStartCommand()` handles notification toggle actions (`ACTION_TOGGLE_CHIP`, `ACTION_TOGGLE_PANEL`) and returns `START_STICKY`.
 * `onDestroy()` calls `controller.destroy()` so no overlay windows leak.
 * Anchors: `OverlayVolumeService -> onCreate`, `onStartCommand`, `onDestroy`, `buildNotification`.
 
@@ -60,7 +60,7 @@ flowchart LR
 
 ## 3. Extension Recipes
 
-* **Change drag granularity:** edit `dragStepPx` in `OverlayController` (16 dp default); set to 1 dp for fluid dragging.
-* **Change volume intervals:** edit `SeekBar.max` in `volume_chip.xml` and multiply `progress` accordingly in `OverlayController -> openChip` / `setPercent` (max 20 gives 5% steps).
+* **Change drag granularity:** edit `volumeStepPx` in `OverlayController` (14 dp default); decrease for finer drag travel, increase for coarser.
+* **Change volume intervals:** edit `SeekBar.max` in `volume_chip.xml` and multiply `progress` accordingly in `OverlayController -> openChip` / `setPercent` (e.g., max 20 gives 5% steps).
 * **Add a fifth stream:** add an option id in `volume_chip.xml`, append it to `optionIds`, its `AudioManager.STREAM_*` to `streams`, and its label to `labels` in `OverlayController`; no service changes needed.
 * **Add a Realme model:** append a candidate component to the matching list in `RealmeSettings -> openAutoLaunch` / `openAppBatteryManagement`.
