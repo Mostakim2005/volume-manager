@@ -54,31 +54,41 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        updateStatus()
+        try {
+            updateStatus()
+        } catch (_: Throwable) {}
     }
 
     private fun startOverlayService() {
-        if (!Permissions.canDrawOverlays(this)) {
-            Toast.makeText(this, "Grant 'Display over other apps' first", Toast.LENGTH_LONG).show()
-            RealmeSettings.openDisplayOverOtherApps(this)
-            return
+        try {
+            if (!Permissions.canDrawOverlays(this)) {
+                Toast.makeText(this, "Grant 'Display over other apps' first", Toast.LENGTH_LONG).show()
+                RealmeSettings.openDisplayOverOtherApps(this)
+                return
+            }
+            if (!Permissions.hasNotificationPermission(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return
+            }
+            val intent = Intent(this, OverlayVolumeService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+            Toast.makeText(this, "Volume overlay started", Toast.LENGTH_SHORT).show()
+        } catch (e: Throwable) {
+            Toast.makeText(this, "Could not start overlay: ${e.message}", Toast.LENGTH_SHORT).show()
         }
-        if (!Permissions.hasNotificationPermission(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-            return
-        }
-        val intent = Intent(this, OverlayVolumeService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
-        Toast.makeText(this, "Volume overlay started", Toast.LENGTH_SHORT).show()
     }
 
     private fun stopOverlayService() {
-        stopService(Intent(this, OverlayVolumeService::class.java))
-        Toast.makeText(this, "Volume overlay stopped", Toast.LENGTH_SHORT).show()
+        try {
+            stopService(Intent(this, OverlayVolumeService::class.java))
+            Toast.makeText(this, "Volume overlay stopped", Toast.LENGTH_SHORT).show()
+        } catch (e: Throwable) {
+            Toast.makeText(this, "Could not stop overlay: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun updateStatus() {

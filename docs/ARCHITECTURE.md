@@ -27,7 +27,8 @@ flowchart TD
 
 ### [SUBSYSTEM: Overlay Window Management] | Aliases: WindowManager, edge snap, drag, touch, squircle
 > **1-Line Summary:** One controller owns all overlay windows (48dp squircle handle, vertical panel, stream popup, HUD) and every `addView`/`updateViewLayout`/`removeView` call safely.
-* All overlay windows use `TYPE_APPLICATION_OVERLAY` (fallback `TYPE_PHONE` below API 26), `FLAG_NOT_FOCUSABLE or FLAG_NOT_TOUCH_MODAL`, `PixelFormat.TRANSLUCENT`, and `Gravity.TOP or Gravity.START`.
+* All overlay windows use `TYPE_APPLICATION_OVERLAY` (fallback `TYPE_PHONE` below API 26), `FLAG_NOT_FOCUSABLE or FLAG_NOT_TOUCH_MODAL or FLAG_LAYOUT_IN_SCREEN`, `PixelFormat.TRANSLUCENT`, and `Gravity.TOP or Gravity.START`.
+* **Multi-Window & PiP Resilience:** `FLAG_LAYOUT_IN_SCREEN` ensures overlay positions are evaluated against physical screen space, unaffected by split-screen or PiP task boundaries. `screenSize()` resolves dimensions primarily through `context.resources.displayMetrics`, eliminating the Android 11 `currentWindowMetrics` Service crash during multi-window.
 * **Tactile Squircle Handle:** `48×48 dp` (16dp corner radius). Direct vertical drag adjusts volume (+ UP, - DOWN). Single tap toggles the vertical panel. Long-press (320 ms) unlocks free 2D repositioning with haptic feedback.
 * **Calibrated Touch Slop:** Uses `ViewConfiguration.scaledTouchSlop` (~16–20 px) so natural thumb taps cleanly register to toggle the panel without being swallowed as drags.
 * **System Gesture Exclusion:** Calls `setSystemGestureExclusionRects()` on API 29+ with the handle's bounds to prevent accidental Android "Back" gesture triggers.

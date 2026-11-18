@@ -130,14 +130,18 @@ class OverlayController(
 
     private val configReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, intent: Intent) {
-            handleParams?.let { params ->
-                val (width, height) = screenSize()
-                params.x = if (params.x + handleWidth / 2 < width / 2) 0 else width - handleWidth
-                params.y = params.y.coerceIn(0, (height - handleHeight).coerceAtLeast(0))
-                handle?.let { updateSafely(it, params) }
-                updateGestureExclusion()
+            try {
+                handleParams?.let { params ->
+                    val (width, height) = screenSize()
+                    params.x = if (params.x + handleWidth / 2 < width / 2) 0 else (width - handleWidth).coerceAtLeast(0)
+                    params.y = params.y.coerceIn(0, (height - handleHeight).coerceAtLeast(0))
+                    handle?.let { updateSafely(it, params) }
+                    updateGestureExclusion()
+                }
+                if (panel != null) positionPanel()
+            } catch (e: Throwable) {
+                Log.w(TAG, "Error handling config change: ${e.message}")
             }
-            if (panel != null) positionPanel()
         }
     }
 
@@ -149,17 +153,17 @@ class OverlayController(
         }
         if (handle != null) return
 
-        val view = inflater.inflate(R.layout.floating_handle, null)
-        val params = overlayParams().apply {
-            width = handleWidth
-            height = handleHeight
-        }
-        val (_, height) = screenSize()
-        params.x = 0
-        params.y = (height * 0.38f).toInt()
-
-        attachHandleTouch(view, params)
         try {
+            val view = inflater.inflate(R.layout.floating_handle, null)
+            val params = overlayParams().apply {
+                width = handleWidth
+                height = handleHeight
+            }
+            val (_, height) = screenSize()
+            params.x = 0
+            params.y = (height * 0.38f).toInt()
+
+            attachHandleTouch(view, params)
             windowManager.addView(view, params)
             handle = view
             handleParams = params
@@ -167,7 +171,7 @@ class OverlayController(
             registerReceivers()
             resetIdleTimer()
             Log.d(TAG, "Slim edge handle added")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "Failed to add handle: ${e.message}")
         }
     }
@@ -268,8 +272,8 @@ class OverlayController(
 
                     if (isRepositionMode) {
                         val (width, height) = screenSize()
-                        params.x = (startX + dx).roundToInt().coerceIn(0, width - handleWidth)
-                        params.y = (startY + dy).roundToInt().coerceIn(0, height - handleHeight)
+                        params.x = (startX + dx).roundToInt().coerceIn(0, (width - handleWidth).coerceAtLeast(0))
+                        params.y = (startY + dy).roundToInt().coerceIn(0, (height - handleHeight).coerceAtLeast(0))
                         updateSafely(v, params)
                         if (panel != null) positionPanel()
                     } else if (hasMoved) {
@@ -306,7 +310,7 @@ class OverlayController(
 
     private fun snapToEdge(view: View, params: WindowManager.LayoutParams) {
         val (width, _) = screenSize()
-        val target = if (params.x + handleWidth / 2 < width / 2) 0 else width - handleWidth
+        val target = if (params.x + handleWidth / 2 < width / 2) 0 else (width - handleWidth).coerceAtLeast(0)
 
         edgeAnimator?.cancel()
         edgeAnimator = ValueAnimator.ofInt(params.x, target).apply {
@@ -430,13 +434,14 @@ class OverlayController(
         val hParams = handleParams ?: return
 
         val isLeft = hParams.x + handleWidth / 2 < width / 2
-        params.x = if (isLeft) {
+        val candidateX = if (isLeft) {
             hParams.x + handleWidth + edgeMargin
         } else {
             hParams.x - panelWidth - edgeMargin
         }
+        params.x = candidateX.coerceIn(0, (width - panelWidth).coerceAtLeast(0))
         params.y = (hParams.y + handleHeight / 2 - panelHeight / 2)
-            .coerceIn(edgeMargin, (height - panelHeight - edgeMargin).coerceAtLeast(edgeMargin))
+            .coerceIn(0, (height - panelHeight).coerceAtLeast(0))
 
         panel?.let { updateSafely(it, params) }
         if (popup != null) positionPopup()
@@ -500,11 +505,12 @@ class OverlayController(
         val (width, _) = screenSize()
 
         val isLeft = pParams.x < width / 2
-        params.x = if (isLeft) {
+        val candidateX = if (isLeft) {
             pParams.x + panelWidth + edgeMargin
         } else {
             pParams.x - popupWidth - edgeMargin
         }
+        params.x = candidateX.coerceIn(0, (width - popupWidth).coerceAtLeast(0))
         params.y = pParams.y
         popup?.let { updateSafely(it, params) }
     }
@@ -521,7 +527,7 @@ class OverlayController(
             try {
                 windowManager.addView(view, params)
                 hud = view
-            } catch (_: Exception) {}
+            } catch (_: Throwable) {}
         }
 
         hud?.findViewById<TextView>(R.id.hud_icon)?.text = activeStreamIcon
@@ -530,10 +536,11 @@ class OverlayController(
         val hParams = handleParams
         val hudP = hudParams
         if (hParams != null && hudP != null) {
-            val (width, _) = screenSize()
+            val (width, height) = screenSize()
             val isLeft = hParams.x + handleWidth / 2 < width / 2
-            hudP.x = if (isLeft) hParams.x + handleWidth + edgeMargin else hParams.x - dp(120f) - edgeMargin
-            hudP.y = hParams.y + handleHeight / 2 - dp(18f)
+            val candidateX = if (isLeft) hParams.x + handleWidth + edgeMargin else hParams.x - dp(120f) - edgeMargin
+            hudP.x = candidateX.coerceIn(0, (width - dp(120f)).coerceAtLeast(0))
+            hudP.y = (hParams.y + handleHeight / 2 - dp(18f)).coerceIn(0, (height - dp(36f)).coerceAtLeast(0))
             hud?.let { updateSafely(it, hudP) }
         }
     }
@@ -650,22 +657,48 @@ class OverlayController(
             WindowManager.LayoutParams.WRAP_CONTENT,
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         ).apply { gravity = Gravity.TOP or Gravity.START }
     }
 
-    private fun screenSize(): Pair<Int, Int> =
+    private fun screenSize(): Pair<Int, Int> {
+        // 1. Primary: DisplayMetrics from context resources (reliable, never throws in any context or multi-window)
+        try {
+            val dm = context.resources.displayMetrics
+            if (dm.widthPixels > 0 && dm.heightPixels > 0) {
+                return dm.widthPixels to dm.heightPixels
+            }
+        } catch (_: Throwable) {}
+
+        // 2. Secondary: defaultDisplay.getRealSize
+        try {
+            @Suppress("DEPRECATION")
+            val display = windowManager.defaultDisplay
+            if (display != null) {
+                val point = android.graphics.Point()
+                @Suppress("DEPRECATION")
+                display.getRealSize(point)
+                if (point.x > 0 && point.y > 0) {
+                    return point.x to point.y
+                }
+            }
+        } catch (_: Throwable) {}
+
+        // 3. Tertiary: WindowMetrics on Android 11+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val bounds = windowManager.currentWindowMetrics.bounds
-            bounds.width() to bounds.height()
-        } else {
-            @Suppress("DEPRECATION")
-            val point = android.graphics.Point()
-            @Suppress("DEPRECATION")
-            windowManager.defaultDisplay.getSize(point)
-            point.x to point.y
+            try {
+                val bounds = windowManager.currentWindowMetrics.bounds
+                if (bounds.width() > 0 && bounds.height() > 0) {
+                    return bounds.width() to bounds.height()
+                }
+            } catch (_: Throwable) {}
         }
+
+        // 4. Safe hardware fallback for Realme 6 (1080 x 2400)
+        return 1080 to 2400
+    }
 
     private fun updateSafely(view: View, params: WindowManager.LayoutParams) {
         if (!view.isAttachedToWindow) return

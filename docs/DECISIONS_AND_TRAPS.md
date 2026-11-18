@@ -129,6 +129,11 @@ flowchart TD
 * **Avoidance:** Test if `event.rawX`/`rawY` intersects the child view's bounding rectangle (`Rect.contains`); if so, return `false` from the touch listener so the child receives its click cleanly.
 * **Anchors:** `OverlayController -> openPanel`, `btn_stream_icon`.
 
+### [TRAP: Android 11 Service WindowMetrics Crash In Multi-Window / PiP] | Aliases: split screen crash, pip crash, currentWindowMetrics exception
+> **1-Line Summary:** Calling `windowManager.currentWindowMetrics` from a non-visual Service context during split-screen or PiP on Android 11 throws `IllegalStateException`/`IllegalArgumentException`, killing the app process.
+* **Avoidance:** Use `context.resources.displayMetrics` as the primary screen dimension source (100% crash-proof across all contexts and split-screen modes) and wrap all window calculations in strict try-catch blocks with hardware fallback (`1080 x 2400`). Add `FLAG_LAYOUT_IN_SCREEN` and set `resizeableActivity="true"` with `configChanges` on `MainActivity`.
+* **Anchors:** `OverlayController -> screenSize`, `overlayParams`, `configReceiver`; `AndroidManifest.xml` -> `MainActivity`.
+
 ## 3. Verification Gate
 
 ### [VERIFY: CI And Release Verified On GitHub] | Aliases: assembleDebug, lintDebug, tag release, arm64

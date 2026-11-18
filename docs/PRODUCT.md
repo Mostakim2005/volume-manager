@@ -47,6 +47,18 @@
 * **Code Anchors:**
   * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `volumeChangeReceiver`, `registerReceivers`, `unregisterReceivers`
 
+### [FEATURE: Multi-Window, Split-Screen & PiP Overlay Resilience] | Aliases: split screen, multi window, youtube pip, 3-finger swipe up
+> **1-Line Summary:** Fully resilient window positioning and lifecycle management that survives Realme 3-finger split-screen and floating PiP overlays without crashing.
+* **User Intention (Non-Negotiable):** Volume overlay must stay alive and draggable when running split-screen multitasking or watching floating YouTube videos, and never crash when opening the app during multi-window.
+* **Visual / UI Behavior:**
+  * Uses `FLAG_LAYOUT_IN_SCREEN` so overlay coordinates remain global across multi-window frames.
+  * Robust `DisplayMetrics` resolution with zero-crash fallback prevents Android 11 service `currentWindowMetrics` crashes.
+  * Strict boundary clamping ensures handle, vertical panel, and popup never get positioned outside active visible screen boundaries.
+  * Declares `resizeableActivity="true"` and `configChanges` on `MainActivity` so orientation and split-screen mode changes never destroy or kill the activity.
+* **Code Anchors:**
+  * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `screenSize`, `overlayParams`, `configReceiver`, `positionPanel`, `snapToEdge`
+  * `app/src/main/AndroidManifest.xml` -> `MainActivity` (`resizeableActivity`, `configChanges`)
+
 ### [FEATURE: Spacious Interactive Notification & Step Buttons] | Aliases: notification volume, shade buttons, volume buttons, minus plus
 > **1-Line Summary:** A spacious, interactive notification (~68 dp card height) with dedicated [−] and [+] volume step buttons, isolated stream switcher pill, and 10dp progress track.
 * **User Intention (Non-Negotiable):** Eliminate un-draggable slider frustration and accidental stream cycling by providing clear, large [−] and [+] touch buttons and a distinct stream pill.
