@@ -7,19 +7,22 @@
 
 ## 2. Active Features (Do Not Break)
 
-### [FEATURE: Slim Vertical Edge Pill] | Aliases: edge handle, 28dp pill, flush handle, edge snap
-> **1-Line Summary:** A 28×64 dp filled vertical pill docked flush to the screen edge: drag vertically for volume, tap to toggle the vertical panel, and hold (300 ms) to move anywhere.
-* **User Intention (Non-Negotiable):** Mimic Realme's Smart Sidebar with a slim, flush volume trigger that never wastes horizontal screen space and eliminates accidental Android "Back" gesture conflicts.
+### [FEATURE: Squircle Edge Handle & Zero-Lag Touch] | Aliases: edge handle, 48dp squircle, tactile handle, zero-lag scrub
+> **1-Line Summary:** A 48×48 dp squircle handle with 16dp rounded corners: drag vertically for volume with IPC step throttling, tap to toggle vertical panel, and hold (320 ms) to move anywhere.
+* **User Intention (Non-Negotiable):** Touch-friendly 48dp target for comfortable one-handed thumb use that never lags the phone and eliminates accidental Android "Back" gesture conflicts.
 * **Visual / UI Behavior:** 
-  * Filled gradient orange pill with subtle up/down arrows and volume icon.
+  * Filled gradient orange squircle with subtle up/down arrows and centered speaker icon.
   * Direct vertical drag: dragging UP increases volume in 10% steps; dragging DOWN decreases volume.
+  * Zero-lag IPC throttling: dispatches Binder IPC calls to `AudioService` only when the rounded volume integer step changes, preventing 90Hz/120Hz touch loop flooding.
+  * Native touch slop: calibrated via `ViewConfiguration.scaledTouchSlop` so taps reliably toggle the vertical panel without being swallowed as moves.
   * Single tap: toggles the rotated vertical volume panel.
-  * Long-press (300 ms): pulses blue, fires a haptic tick, and enters Reposition Mode for free movement.
+  * Long-press (320 ms): pulses blue, fires a haptic tick, and enters Reposition Mode for free movement.
   * Idle dimming: smoothly fades to 35% alpha after 3.5 seconds of inactivity.
   * Gesture exclusion: registers `setSystemGestureExclusionRects()` on Android 10+ so edge swipes never trigger system Back navigation.
 * **Code Anchors:**
   * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `show`, `attachHandleTouch`, `snapToEdge`, `updateGestureExclusion`, `setPercent`
   * `app/src/main/res/layout/floating_handle.xml` -> `handle_root`, `handle_arrow_up`, `handle_icon`, `handle_arrow_down`
+  * `app/src/main/res/values/dimens.xml` -> `handle_width`, `handle_height`, `handle_corner_radius`
 
 ### [FEATURE: Rotated Vertical Volume Panel] | Aliases: vertical slider, stream popover, volume panel
 > **1-Line Summary:** A 54×192 dp vertical volume panel with a top stream icon, a 104 dp vertical scrub track, and bottom percentage readout.
@@ -58,10 +61,11 @@
   * `app/src/main/java/com/volumemanager/BootReceiver.kt` -> `onReceive`, `startSafely`
   * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `setPercent`
 
-### [FEATURE: Realme UI Setup Launcher] | Aliases: permissions, auto-launch deep link, battery management
-> **1-Line Summary:** A setup activity with one-tap buttons that deep-link into overlay, notification, battery and Realme startup screens.
+### [FEATURE: Modern Card Setup Activity & System Mute Tip] | Aliases: setup activity, permissions card, realme setup, system overlay mute
+> **1-Line Summary:** A clean Material card activity featuring Prism Speaker branding, real-time permission status pills, Realme autostart deep-links, and instructions to silence Android System overlay notices.
 * **Code Anchors:**
   * `app/src/main/java/com/volumemanager/MainActivity.kt` -> `onCreate`, `startOverlayService`, `updateStatus`
+  * `app/src/main/res/layout/activity_main.xml` -> `statusPillService`, `btn_start`, `btn_stop`, `btn_overlay`, `btn_notifications`, `btn_battery_optimization`
   * `app/src/main/java/com/volumemanager/util/RealmeSettings.kt` -> `openAutoLaunch`, `openAppBatteryManagement`
 
 ## 3. Planned Features & App-Merge Wishlist

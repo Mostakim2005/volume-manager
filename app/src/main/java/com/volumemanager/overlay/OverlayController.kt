@@ -19,6 +19,7 @@ import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
@@ -46,12 +47,12 @@ class OverlayController(
     private val density = context.resources.displayMetrics.density
     private val handler = Handler(Looper.getMainLooper())
 
-    private val touchSlop = dp(6f)
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
     private val volumeStepPx = dp(14f)
     private val edgeMargin = dp(8f)
 
-    private val handleWidth = dp(28f)
-    private val handleHeight = dp(64f)
+    private val handleWidth = dp(48f)
+    private val handleHeight = dp(48f)
     private val panelWidth = dp(54f)
     private val panelHeight = dp(192f)
     private val popupWidth = dp(128f)
@@ -485,8 +486,11 @@ class OverlayController(
     }
 
     // ------------------------------------------------------------------
-    // Volume Control & DND Protection
+    // Volume Control & DND Protection (Zero-Lag Throttled IPC)
     // ------------------------------------------------------------------
+
+    private var lastDispatchedStep = -1
+    private var lastDispatchedStream = -1
 
     private fun setPercent(percent: Float) {
         val clamped = percent.coerceIn(0f, 100f)
@@ -494,15 +498,21 @@ class OverlayController(
         if (max <= 0) return
         val target = ((clamped / 100f) * max).roundToInt().coerceIn(0, max)
 
-        // Trap Guard: SecurityException on DND/Zen mode
-        try {
-            audioManager.setStreamVolume(activeStream, target, 0)
-        } catch (e: SecurityException) {
-            Log.w(TAG, "DND prevented setting volume: ${e.message}")
+        // PERFORMANCE GUARD: Prevent 90Hz/120Hz Binder IPC flood to system_server
+        // Only invoke audioManager.setStreamVolume and onVolumeChanged when the actual volume step changes!
+        if (target != lastDispatchedStep || activeStream != lastDispatchedStream) {
+            lastDispatchedStep = target
+            lastDispatchedStream = activeStream
+            // Trap Guard: SecurityException on DND/Zen mode
+            try {
+                audioManager.setStreamVolume(activeStream, target, 0)
+            } catch (e: SecurityException) {
+                Log.w(TAG, "DND prevented setting volume: ${e.message}")
+            }
+            onVolumeChanged(clamped.roundToInt(), activeStreamName)
         }
 
         syncPanelUi(clamped)
-        onVolumeChanged(clamped.roundToInt(), activeStreamName)
     }
 
     private fun syncPanelUi(percent: Float) {

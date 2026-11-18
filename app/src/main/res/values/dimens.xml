@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Slim filled edge pill handle (docked flush to screen edge) -->
-    <dimen name="handle_width">28dp</dimen>
-    <dimen name="handle_height">64dp</dimen>
+    <!-- Squircle edge handle (48x48 dp with 16dp rounded corners) -->
+    <dimen name="handle_width">48dp</dimen>
+    <dimen name="handle_height">48dp</dimen>
+    <dimen name="handle_corner_radius">16dp</dimen>
 
     <!-- Rotated vertical volume panel -->
     <dimen name="vertical_panel_width">54dp</dimen>

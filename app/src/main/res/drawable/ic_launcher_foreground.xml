@@ -4,16 +4,39 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Subtle Ground Shadow -->
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M54,18a36,36 0 1,0 0,72a36,36 0 1,0 0,-72z" />
-    <group
-        android:scaleX="1.9"
-        android:scaleY="1.9"
-        android:translateX="28"
-        android:translateY="28">
-        <path
-            android:fillColor="#FF5B4BE8"
-            android:pathData="M3,9v6h4l5,5V4L7,9H3zM16.5,12c0,-1.77 -1.02,-3.29 -2.5,-4.03v8.05c1.48,-0.73 2.5,-2.25 2.5,-4.02zM14,3.23v2.06c2.89,0.86 5,3.54 5,6.71s-2.11,5.85 -5,6.71v2.06c4.01,-0.91 7,-4.49 7,-8.77s-2.99,-7.86 -7,-8.77z" />
-    </group>
+        android:fillColor="#1E0F172A"
+        android:pathData="M22,86a32,6 0 1,0 64,0a32,6 0 1,0 -64,0" />
+
+    <!-- Isometric Cone Body (Base) -->
+    <path
+        android:fillColor="#F4511E"
+        android:pathData="M26,44h12l18,-16v52l-18,-16h-12z" />
+
+    <!-- Prism 3D Top Facet Highlight -->
+    <path
+        android:fillColor="#4DFFFFFF"
+        android:pathData="M26,44h12l18,-16v26h-30z" />
+
+    <!-- Speaker Back Rim Depth -->
+    <path
+        android:fillColor="#E64A19"
+        android:pathData="M26,44v20h3v-20z" />
+
+    <!-- Inner Stepped Acoustic Wave -->
+    <path
+        android:pathData="M66,40 C73,45 76,49 76,54 C76,59 73,63 66,68"
+        android:strokeColor="#FF6B3D"
+        android:strokeLineCap="round"
+        android:strokeWidth="5" />
+
+    <!-- Outer Stepped Acoustic Wave -->
+    <path
+        android:pathData="M78,30 C88,38 92,46 92,54 C92,62 88,70 78,78"
+        android:strokeColor="#FFA07A"
+        android:strokeLineCap="round"
+        android:strokeWidth="5" />
+
 </vector>

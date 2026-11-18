@@ -11,9 +11,19 @@
     <string name="notif_media_down">Volume icon</string>
 
     <!-- Main activity -->
-    <string name="main_intro" formatted="false">Drag the slim edge pill up or down to change volume in 10% steps. Tap it to toggle the vertical volume slider. Long-press to move it anywhere.</string>
-    <string name="main_setup_heading">Realme 6 / Realme UI setup (required)</string>
+    <string name="main_intro" formatted="false">Floating edge volume control for Realme 6. Drag the squircle up/down to adjust volume, tap to open vertical slider, hold to reposition.</string>
+    <string name="main_setup_heading">Realme 6 / Realme UI setup</string>
     <string name="main_setup_hint">Auto-launch must be ON or Realme UI blocks the boot receiver after a restart. In App Battery Management allow both background and foreground activity.</string>
+    <string name="card_service_title">Overlay Service</string>
+    <string name="card_service_desc">Controls the floating edge handle and volume panel.</string>
+    <string name="card_permissions_title">Required Permissions</string>
+    <string name="card_realme_title">Realme UI Background &amp; Autostart</string>
+    <string name="tip_system_overlay_title">How to silence the \"App displaying over other apps\" notice</string>
+    <string name="tip_system_overlay_desc">Android shows a persistent system notification whenever an overlay is active. To hide it: press and hold that notification in the shade, tap Turn off notifications, and switch off \"Display over other apps\".</string>
+    <string name="status_running">Active • Running</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="status_granted">Granted</string>
+    <string name="status_required">Setup</string>
     <string name="btn_overlay">Display over other apps</string>
     <string name="btn_notifications">Notification permission</string>
     <string name="btn_battery_optimization">Ignore battery optimizations</string>

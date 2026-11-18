@@ -25,17 +25,19 @@ flowchart TD
 * `onDestroy()` calls `controller.destroy()` so no overlay windows or receivers leak.
 * Anchors: `OverlayVolumeService -> onCreate`, `onStartCommand`, `onDestroy`, `buildNotification`.
 
-### [SUBSYSTEM: Overlay Window Management] | Aliases: WindowManager, edge snap, drag, touch
-> **1-Line Summary:** One controller owns all overlay windows (pill, vertical panel, stream popup, HUD) and every `addView`/`updateViewLayout`/`removeView` call safely.
+### [SUBSYSTEM: Overlay Window Management] | Aliases: WindowManager, edge snap, drag, touch, squircle
+> **1-Line Summary:** One controller owns all overlay windows (48dp squircle handle, vertical panel, stream popup, HUD) and every `addView`/`updateViewLayout`/`removeView` call safely.
 * All overlay windows use `TYPE_APPLICATION_OVERLAY` (fallback `TYPE_PHONE` below API 26), `FLAG_NOT_FOCUSABLE or FLAG_NOT_TOUCH_MODAL`, `PixelFormat.TRANSLUCENT`, and `Gravity.TOP or Gravity.START`.
-* **Slim Edge Pill:** `28×64 dp`. Direct vertical drag adjusts volume (+ UP, - DOWN). Single tap toggles the vertical panel. Long-press (300 ms) unlocks free 2D repositioning with haptic feedback.
-* **System Gesture Exclusion:** Calls `setSystemGestureExclusionRects()` on API 29+ with the pill's bounds to prevent accidental Android "Back" gesture triggers.
-* **Rotated Vertical Panel:** `54×192 dp`. Positioned flush beside the pill. Features a top stream button, a vertical scrub track (104 dp), and bottom percentage text. Auto-dismisses after 4 seconds of inactivity.
+* **Tactile Squircle Handle:** `48×48 dp` (16dp corner radius). Direct vertical drag adjusts volume (+ UP, - DOWN). Single tap toggles the vertical panel. Long-press (320 ms) unlocks free 2D repositioning with haptic feedback.
+* **Calibrated Touch Slop:** Uses `ViewConfiguration.scaledTouchSlop` (~16–20 px) so natural thumb taps cleanly register to toggle the panel without being swallowed as drags.
+* **System Gesture Exclusion:** Calls `setSystemGestureExclusionRects()` on API 29+ with the handle's bounds to prevent accidental Android "Back" gesture triggers.
+* **Rotated Vertical Panel:** `54×192 dp`. Positioned flush beside the handle. Features a top stream button, a vertical scrub track (104 dp), and bottom percentage text. Auto-dismisses after 4 seconds of inactivity.
 * Anchors: `OverlayController -> overlayParams`, `attachHandleTouch`, `snapToEdge`, `openPanel`, `positionPanel`, `togglePopup`.
 
-### [SUBSYSTEM: Volume Mapping & DND Safety] | Aliases: AudioManager, discrete 10 percent, DND guard
-> **1-Line Summary:** Converts vertical touch fractions into discrete 10% steps, guards against Do Not Disturb SecurityException, and syncs external hardware button presses.
-* `setPercent()` clamps values, calculates the target stream volume, and wraps `audioManager.setStreamVolume()` in a `try-catch` block catching `SecurityException`.
+### [SUBSYSTEM: Volume Mapping & Zero-Lag IPC Throttling] | Aliases: AudioManager, discrete 10 percent, IPC throttling, DND guard
+> **1-Line Summary:** Dispatches volume changes only when the rounded integer step changes to eliminate 90Hz/120Hz Binder IPC flooding to AudioService.
+* `setPercent()` clamps values, calculates the target stream volume, and compares with `lastDispatchedStep`. Only dispatches `audioManager.setStreamVolume()` when the integer level actually changes.
+* Wraps `audioManager.setStreamVolume()` in a `try-catch` block catching `SecurityException` for DND/Zen mode safety.
 * `volumeChangeReceiver` listens dynamically for `android.media.VOLUME_CHANGED_ACTION` to sync UI when hardware volume keys are pressed.
 * Anchors: `OverlayController -> setPercent`, `currentPercent`, `volumeChangeReceiver`.
 

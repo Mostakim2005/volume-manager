@@ -6,24 +6,23 @@
     android:background="@drawable/handle_background"
     android:gravity="center"
     android:orientation="vertical"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp">
+    android:padding="2dp">
 
     <TextView
         android:id="@+id/handle_arrow_up"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="▲"
-        android:textColor="#E6FFFFFF"
-        android:textSize="8sp"
+        android:textColor="#CCFFFFFF"
+        android:textSize="7sp"
         android:textStyle="bold" />
 
     <ImageView
         android:id="@+id/handle_icon"
-        android:layout_width="15dp"
-        android:layout_height="15dp"
-        android:layout_marginTop="2dp"
-        android:layout_marginBottom="2dp"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginTop="1dp"
+        android:layout_marginBottom="1dp"
         android:contentDescription="@string/handle_content_description"
         android:src="@drawable/ic_volume_small" />
 
@@ -32,8 +31,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="▼"
-        android:textColor="#E6FFFFFF"
-        android:textSize="8sp"
+        android:textColor="#CCFFFFFF"
+        android:textSize="7sp"
         android:textStyle="bold" />
 
 </LinearLayout>

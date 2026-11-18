@@ -10,11 +10,22 @@
 * **Status:** `[DECIDED BY: HUMAN]`
 * **Anchors:** `OverlayController -> openPanel`, `vertical_track_frame`; `app/src/main/res/layout/volume_vertical_panel.xml`.
 
-### [DECISION: Slim 28dp Flush Edge Pill With Multi-Touch Semantics] | Aliases: slim handle, 28dp, direct drag, hold to move
-> **1-Line Summary:** Replaced the 44 dp round circle with a slim 28×64 dp filled vertical pill docked flush to the screen edge.
-* **Semantics:** Direct swipe UP increases volume, swipe DOWN decreases volume, single tap toggles the vertical panel, and long-press (300 ms) unlocks free repositioning with haptic feedback.
+### [DECISION: 48dp Squircle Handle Over 28dp Slim Pill] | Aliases: squircle handle, 48dp, finger touch, tactile handle
+> **1-Line Summary:** Replaced the 28 dp slim pill with a 48×48 dp squircle with 16dp rounded corners for reliable finger touch and smooth drag.
+* **What was rejected:** 28 dp slim pill (user feedback: "way too slim, cannot even use finger properly").
+* **Semantics:** Direct swipe UP increases volume, swipe DOWN decreases volume, single tap toggles the vertical panel, and long-press (320 ms) unlocks free repositioning with haptic feedback.
 * **Status:** `[DECIDED BY: HUMAN]`
-* **Anchors:** `OverlayController -> attachHandleTouch`; `app/src/main/res/layout/floating_handle.xml`.
+* **Anchors:** `OverlayController -> attachHandleTouch`; `app/src/main/res/layout/floating_handle.xml`; `app/src/main/res/values/dimens.xml`.
+
+### [DECISION: Concept 4 Prism Speaker App Launcher Icon] | Aliases: prism speaker, app icon, logo redesign
+> **1-Line Summary:** Replaced legacy purple circle logo with Concept 4 (Prism Speaker): isometric acoustic cone, facet highlight, and multi-tier sound waves.
+* **Status:** `[DECIDED BY: HUMAN]`
+* **Anchors:** `app/src/main/res/drawable/ic_launcher_foreground.xml`; `app/src/main/res/values/colors.xml` -> `ic_launcher_background`.
+
+### [DECISION: Zero-Lag Binder IPC Throttling] | Aliases: zero lag, IPC throttling, performance optimization
+> **1-Line Summary:** Dispatches volume changes across Binder IPC to system_server only when the integer volume step actually changes.
+* **Status:** `[DECIDED BY: AGENT]`
+* **Anchors:** `OverlayController -> setPercent`.
 
 ### [DECISION: Ultra-Compact Symmetrical Notification] | Aliases: green ball notification, minimal shade, centered
 > **1-Line Summary:** Streamlined notification to minimal vertical height with centered, symmetrical alignment and theme-adaptive colors.
@@ -81,6 +92,21 @@ flowchart TD
 ### [TRAP: Dynamic Receiver Flags on API 33+] | Aliases: RECEIVER_EXPORTED, SecurityException
 > **1-Line Summary:** Registering a receiver for a system broadcast without an export flag throws on API 33+ when targeting 33.
 * **Avoidance:** Use the three-argument `registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)` on TIRAMISU+.
+
+### [TRAP: 90Hz/120Hz Binder IPC Flooding on Touch Move] | Aliases: phone lag, high CPU, system_server freeze, AudioService contention
+> **1-Line Summary:** Calling `audioManager.setStreamVolume` on every pixel during 90Hz/120Hz touch events causes severe Binder thread contention and device lag.
+* **Avoidance:** Cache `lastDispatchedStep` and only dispatch `setStreamVolume()` when the integer volume step actually changes. Debounce notification updates by 200–250ms.
+* **Anchors:** `OverlayController -> setPercent`; `OverlayVolumeService -> scheduleNotificationRefresh`.
+
+### [TRAP: Google Play Protect Sideloading Warning on SYSTEM_ALERT_WINDOW] | Aliases: play protect warning, unrecognized developer, blocked app
+> **1-Line Summary:** Sideloading a self-signed APK requesting `SYSTEM_ALERT_WINDOW` triggers a prominent Play Protect defense warning.
+* **Avoidance:** Ensure zero internet permissions (`android.permission.INTERNET` omitted) so the app is provably offline, and document why Play Protect triggers on sensitive overlay permissions for unrecognized certificates.
+* **Anchors:** `app/src/main/AndroidManifest.xml`.
+
+### [TRAP: Tight Touch Slop Swallowing Taps] | Aliases: tap not opening panel, touch slop, micro tremors
+> **1-Line Summary:** Hardcoding touch slop to a small value (e.g. 6 dp / 8 px) causes natural thumb micro-jitter to be classified as a move, preventing tap actions.
+* **Avoidance:** Always use `ViewConfiguration.get(context).scaledTouchSlop` (~16–20 px) so taps register cleanly.
+* **Anchors:** `OverlayController -> attachHandleTouch`.
 
 ## 3. Verification Gate
 

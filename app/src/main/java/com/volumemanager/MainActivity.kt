@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.volumemanager.databinding.ActivityMainBinding
 import com.volumemanager.util.Permissions
 import com.volumemanager.util.RealmeSettings
@@ -81,11 +82,48 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateStatus() {
+        val hasOverlay = Permissions.canDrawOverlays(this)
+        val hasNotif = Permissions.hasNotificationPermission(this)
+        val isBatteryExempt = Permissions.isIgnoringBatteryOptimizations(this)
+
+        if (hasOverlay) {
+            binding.btnOverlay.text = "GRANTED ✓"
+            binding.btnOverlay.setTextColor(ContextCompat.getColor(this, R.color.status_pill_ok_text))
+        } else {
+            binding.btnOverlay.text = "SETUP ➔"
+            binding.btnOverlay.setTextColor(ContextCompat.getColor(this, R.color.primary))
+        }
+
+        if (hasNotif) {
+            binding.btnNotifications.text = "ENABLED ✓"
+            binding.btnNotifications.setTextColor(ContextCompat.getColor(this, R.color.status_pill_ok_text))
+        } else {
+            binding.btnNotifications.text = "SETUP ➔"
+            binding.btnNotifications.setTextColor(ContextCompat.getColor(this, R.color.primary))
+        }
+
+        if (isBatteryExempt) {
+            binding.btnBatteryOptimization.text = "EXEMPT ✓"
+            binding.btnBatteryOptimization.setTextColor(ContextCompat.getColor(this, R.color.status_pill_ok_text))
+        } else {
+            binding.btnBatteryOptimization.text = "SETUP ➔"
+            binding.btnBatteryOptimization.setTextColor(ContextCompat.getColor(this, R.color.primary))
+        }
+
+        val isReady = hasOverlay && hasNotif
+        if (isReady) {
+            binding.statusPillService.text = getString(R.string.status_running)
+            binding.statusPillService.setTextColor(ContextCompat.getColor(this, R.color.status_pill_ok_text))
+        } else {
+            binding.statusPillService.text = "Setup Required"
+            binding.statusPillService.setTextColor(ContextCompat.getColor(this, R.color.status_pill_warn_text))
+        }
+
         fun mark(ok: Boolean) = if (ok) "ON" else "OFF"
         binding.statusText.text = listOf(
-            "Display over other apps: ${mark(Permissions.canDrawOverlays(this))}",
-            "Notifications: ${mark(Permissions.hasNotificationPermission(this))}",
-            "Battery optimization ignored: ${mark(Permissions.isIgnoringBatteryOptimizations(this))}",
+            "Display over other apps: ${mark(hasOverlay)}",
+            "Notifications: ${mark(hasNotif)}",
+            "Battery optimization ignored: ${mark(isBatteryExempt)}",
         ).joinToString(separator = "\n")
     }
 }

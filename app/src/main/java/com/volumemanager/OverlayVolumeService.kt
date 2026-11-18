@@ -88,7 +88,7 @@ class OverlayVolumeService : Service() {
 
     private fun scheduleNotificationRefresh() {
         handler.removeCallbacks(refreshNotification)
-        handler.postDelayed(refreshNotification, 120)
+        handler.postDelayed(refreshNotification, 200)
     }
 
     private fun readMediaPercent(): Int {

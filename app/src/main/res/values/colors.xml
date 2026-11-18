@@ -16,5 +16,14 @@
     <color name="notif_track_bg">#E2E8F0</color>
     <color name="text_primary">#0F172A</color>
     <color name="text_secondary">#64748B</color>
-    <color name="ic_launcher_background">#FF6B3D</color>
+    <color name="card_background">#FFFFFF</color>
+    <color name="card_stroke">#E2E8F0</color>
+    <color name="tip_card_bg">#FFF7ED</color>
+    <color name="tip_card_stroke">#FFEDD5</color>
+    <color name="tip_card_text">#9A3412</color>
+    <color name="status_pill_ok_bg">#DCFCE7</color>
+    <color name="status_pill_ok_text">#166534</color>
+    <color name="status_pill_warn_bg">#FEE2E2</color>
+    <color name="status_pill_warn_text">#991B1B</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
 </resources>
