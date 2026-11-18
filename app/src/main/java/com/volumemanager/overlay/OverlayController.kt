@@ -83,6 +83,14 @@ class OverlayController(
     val activeStreamName: String get() = streamLabels[activeStreamIndex]
     val activeStreamIcon: String get() = streamIcons[activeStreamIndex]
 
+    /** Smart auto-focus: if media is playing (YouTube, Spotify, etc.), focus Media stream */
+    fun autoFocusMediaIfActive() {
+        if (audioManager.isMusicActive && activeStreamIndex != 0) {
+            activeStreamIndex = 0
+            lastDispatchedStep = -1
+        }
+    }
+
     private var edgeAnimator: ValueAnimator? = null
     private var isRepositionMode = false
 
@@ -104,11 +112,17 @@ class OverlayController(
     private val volumeChangeReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, intent: Intent) {
             val streamType = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
-            if (streamType == -1 || streamType == activeStream) {
-                val current = currentPercent(activeStream)
-                syncPanelUi(current)
-                onVolumeChanged(current.roundToInt(), activeStreamName)
+            if (streamType != -1 && streamType in streams) {
+                val idx = streams.indexOf(streamType)
+                if (idx >= 0 && idx != activeStreamIndex) {
+                    activeStreamIndex = idx
+                    lastDispatchedStep = -1
+                }
             }
+            val current = currentPercent(activeStream)
+            lastDispatchedStep = audioManager.getStreamVolume(activeStream)
+            syncPanelUi(current)
+            onVolumeChanged(current.roundToInt(), activeStreamName)
         }
     }
 
@@ -227,6 +241,7 @@ class OverlayController(
                 MotionEvent.ACTION_DOWN -> {
                     wakeHandle()
                     edgeAnimator?.cancel()
+                    autoFocusMediaIfActive()
                     startX = params.x
                     startY = params.y
                     startRawX = event.rawX
@@ -256,8 +271,9 @@ class OverlayController(
                         if (panel != null) positionPanel()
                     } else if (hasMoved) {
                         // Direct vertical drag: UP = louder (+), DOWN = quieter (-)
-                        val steps = (-dy / volumeStepPx).roundToInt()
-                        val target = (startPercent + steps * 10f).coerceIn(0f, 100f)
+                        val totalDragPx = dp(140f).toFloat()
+                        val fractionDelta = -dy / totalDragPx
+                        val target = (startPercent + fractionDelta * 100f).coerceIn(0f, 100f)
                         setPercent(target)
                         showHud("$activeStreamName: ${target.roundToInt()}%")
                     }
@@ -272,6 +288,8 @@ class OverlayController(
                         snapToEdge(v, params)
                     } else if (!hasMoved && event.actionMasked == MotionEvent.ACTION_UP) {
                         togglePanel()
+                    } else {
+                        lastDispatchedStep = audioManager.getStreamVolume(activeStream)
                     }
                     resetIdleTimer()
                     scheduleHideHud()
@@ -327,6 +345,8 @@ class OverlayController(
         val progressFill = view.findViewById<View>(R.id.vertical_progress_fill)
         val textPercent = view.findViewById<TextView>(R.id.text_percent)
 
+        autoFocusMediaIfActive()
+
         textStreamIcon.text = activeStreamIcon
         val current = currentPercent(activeStream)
         updateTrackHeight(progressFill, current)
@@ -338,20 +358,29 @@ class OverlayController(
             togglePopup()
         }
 
-        // Scrubbing inside the vertical track: UP = louder, DOWN = quieter
-        trackFrame.setOnTouchListener { _, event ->
+        // Scrubbing across the entire vertical panel: UP = louder, DOWN = quieter
+        val handlePanelScrub: (View, MotionEvent) -> Boolean = { _, event ->
             resetAutoDismissPanel()
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                    val trackH = trackFrame.height.takeIf { it > 0 } ?: dp(104f)
-                    val fraction = 1f - (event.y / trackH.toFloat()).coerceIn(0f, 1f)
-                    val percent = (fraction * 10f).roundToInt() * 10f
+                    val location = IntArray(2)
+                    trackFrame.getLocationOnScreen(location)
+                    val trackTop = location[1].toFloat()
+                    val trackH = trackFrame.height.takeIf { it > 0 }?.toFloat() ?: dp(104f).toFloat()
+                    val fraction = (1f - ((event.rawY - trackTop) / trackH)).coerceIn(0f, 1f)
+                    val percent = fraction * 100f
                     setPercent(percent)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    lastDispatchedStep = audioManager.getStreamVolume(activeStream)
                     true
                 }
                 else -> true
             }
         }
+        view.setOnTouchListener(handlePanelScrub)
+        trackFrame.setOnTouchListener(handlePanelScrub)
 
         val params = overlayParams().apply {
             width = panelWidth
@@ -419,9 +448,11 @@ class OverlayController(
         for (i in itemIds.indices) {
             view.findViewById<View>(itemIds[i]).setOnClickListener {
                 activeStreamIndex = i
+                lastDispatchedStep = -1
                 val current = currentPercent(activeStream)
                 syncPanelUi(current)
                 onVolumeChanged(current.roundToInt(), activeStreamName)
+                showHud("$activeStreamName: ${current.roundToInt()}%")
                 closePopup()
                 resetAutoDismissPanel()
             }

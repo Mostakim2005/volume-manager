@@ -114,6 +114,11 @@ flowchart TD
 * **Avoidance:** Do not rely on continuous drag gestures inside RemoteViews. Provide explicit, large [−] and [+] buttons for 10% volume stepping, and isolate the stream selector pill so volume touches never accidentally cycle streams.
 * **Anchors:** `OverlayVolumeService -> buildNotification`; `app/src/main/res/layout/notification_volume.xml`.
 
+### [TRAP: Wrong Audio Stream Targeted During Media Playback] | Aliases: volume not changing, youtube volume, notification stream trap
+> **1-Line Summary:** If active stream is set to Notification (`💬`), adjusting volume modifies notification tone levels, leaving YouTube / music volume completely unchanged.
+* **Avoidance:** Auto-focus `STREAM_MUSIC` whenever media is actively playing (`audioManager.isMusicActive`), default to Media stream, dynamically sync with hardware volume rocker broadcasts, and allow continuous panel scrubbing across the entire vertical surface.
+* **Anchors:** `OverlayController -> autoFocusMediaIfActive`, `openPanel`, `volumeChangeReceiver`.
+
 ## 3. Verification Gate
 
 ### [VERIFY: CI And Release Verified On GitHub] | Aliases: assembleDebug, lintDebug, tag release, arm64

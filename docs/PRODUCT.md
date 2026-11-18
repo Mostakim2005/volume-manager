@@ -25,15 +25,17 @@
   * `app/src/main/res/values/dimens.xml` -> `handle_width`, `handle_height`, `handle_corner_radius`
 
 ### [FEATURE: Rotated Vertical Volume Panel] | Aliases: vertical slider, stream popover, volume panel
-> **1-Line Summary:** A 54×192 dp vertical volume panel with a top stream icon, a 104 dp vertical scrub track, and bottom percentage readout.
-* **User Intention (Non-Negotiable):** Eliminate empty horizontal space. Dragging UP increases volume, dragging DOWN decreases volume, matching the phone's physical rockers.
+> **1-Line Summary:** A 54×192 dp vertical volume panel with full-surface touch scrubbing, auto-focus on active media, and bottom percentage readout.
+* **User Intention (Non-Negotiable):** Dragging UP increases volume, dragging DOWN decreases volume. Automatically targets Media volume when playing videos/music.
 * **Visual / UI Behavior:**
-  * Positioned directly beside the edge pill with symmetrical, centered layout.
+  * Full-surface touch capture: touching or dragging anywhere vertically across the panel scrubs the volume smoothly.
+  * Auto-focus Media: if video/music is active (e.g. YouTube, Spotify), automatically focuses `STREAM_MUSIC`.
+  * Continuous 1-to-1 hardware step mapping without dead zones.
   * Top circular stream button (🎵, 🔔, 💬, ⏰) opens an inline stream picker pop-up.
-  * Vertical track with filled gradient level and discrete 10% step notches.
+  * Theme-adaptive contrast for text readout in both Light and Dark modes.
   * Auto-dismisses after 4 seconds of inactivity or on outside tap.
 * **Code Anchors:**
-  * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `openPanel`, `closePanel`, `positionPanel`, `togglePopup`, `setPercent`
+  * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `openPanel`, `closePanel`, `positionPanel`, `togglePopup`, `setPercent`, `autoFocusMediaIfActive`
   * `app/src/main/res/layout/volume_vertical_panel.xml` -> `panel_root`, `btn_stream_icon`, `vertical_track_frame`, `vertical_progress_fill`, `text_percent`
   * `app/src/main/res/layout/stream_popup.xml` -> `stream_popup_root`, `pop_opt_media`, `pop_opt_ring`, `pop_opt_notify`, `pop_opt_alarm`
 
