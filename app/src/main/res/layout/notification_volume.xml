@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only framework widgets are used here: this layout is inflated by RemoteViews. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/notif_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <ImageButton
+        android:id="@+id/notif_media_down"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/close_background"
+        android:contentDescription="@string/notif_media_down"
+        android:src="@drawable/ic_volume_small" />
+
+    <ImageButton
+        android:id="@+id/notif_media_up"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/close_background"
+        android:contentDescription="@string/notif_media_up"
+        android:src="@drawable/ic_volume_small" />
+
+    <ImageButton
+        android:id="@+id/notif_toggle"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/close_background"
+        android:contentDescription="@string/notif_toggle"
+        android:src="@drawable/ic_close" />
+
+    <ImageButton
+        android:id="@+id/notif_stop"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/close_background"
+        android:contentDescription="@string/notif_stop"
+        android:src="@drawable/ic_close" />
+
+    <TextView
+        android:id="@+id/notif_status"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:paddingStart="4dp"
+        android:textColor="@color/text_primary"
+        android:textSize="13sp" />
+
+</LinearLayout>

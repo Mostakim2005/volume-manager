@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="handle_width">40dp</dimen>
+    <dimen name="handle_height">84dp</dimen>
+    <dimen name="handle_icon">24dp</dimen>
+    <dimen name="panel_width">280dp</dimen>
+    <dimen name="panel_padding">16dp</dimen>
+    <dimen name="panel_radius">20dp</dimen>
+    <dimen name="slider_margin">10dp</dimen>
+    <dimen name="screen_margin">16dp</dimen>
+    <dimen name="notif_icon">32dp</dimen>
+</resources>
