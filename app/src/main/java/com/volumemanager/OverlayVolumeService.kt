@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.widget.RemoteViews
+import androidx.core.app.NotificationCompat
 import com.volumemanager.overlay.OverlayController
 
 /**
@@ -108,14 +109,10 @@ class OverlayVolumeService : Service() {
             setOnClickPendingIntent(R.id.notif_stop, servicePendingIntent(ACTION_STOP, 4))
         }
 
-        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, NOTIFICATION_CHANNEL_ID)
-        } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(this)
-        }
-
-        return builder
+        // NotificationCompat handles API 23-25 (no channels) and custom views
+        // on every supported level; the platform Builder's custom-content
+        // setters require API 24 and trip lint with minSdk 23.
+        return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_volume_small)
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(statusText)
@@ -134,7 +131,7 @@ class OverlayVolumeService : Service() {
 
     private fun immutableFlags(): Int =
         PendingIntent.FLAG_UPDATE_CURRENT or
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
 
     private companion object {
         const val TAG = "OverlayVolumeService"
