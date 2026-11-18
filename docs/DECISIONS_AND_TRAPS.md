@@ -23,10 +23,22 @@
 * **Anchors:** `BootReceiver -> onReceive`, `waitForUnlock`, `startSafely`.
 
 ### [DECISION: Guard Overlay Access Inside the Service Too] | Aliases: permission revoke, crash prevention
-> **1-Line Summary:** `OverlayController -> show()` and `togglePanel()` both re-check `Settings.canDrawOverlays` before touching `WindowManager`.
-* **Why:** The boot receiver and MainActivity check once, but a notification action fired after the user revokes the permission would otherwise throw and kill the service.
+> **1-Line Summary:** `OverlayController -> show()` and `toggleChip()` both re-check `Settings.canDrawOverlays` before touching `WindowManager`.
+* **Why:** The boot receiver and MainActivity check once, but a notification tap fired after the user revokes the permission would otherwise throw and kill the service.
 * **Status:** `[DECIDED BY: AGENT]`
-* **Anchors:** `OverlayController -> show`, `togglePanel`; `OverlayVolumeService -> onOverlayPermissionMissing`.
+* **Anchors:** `OverlayController -> show`, `toggleChip`; `OverlayVolumeService -> onOverlayPermissionMissing`.
+
+### [DECISION: Compact Bar-Only Overlay, Keep Both Surfaces] | Aliases: remove big panel, no plus/minus, sidebar + notification
+> **1-Line Summary:** Replaced the large four-slider card with a small movable chip containing only a 10-step SeekBar, and kept both the sidebar overlay and the notification.
+* **What was rejected:** Dropping `SYSTEM_ALERT_WINDOW` entirely (the user needs the sidebar overlay), and keeping the big card with −/+ buttons.
+* **Why:** The user's device testing showed the big panel was too large and the tap-to-open path unreliable. Plain framework views, guarded window calls and explicit gesture modes fix reliability; the OS "displaying over other apps" notification is unavoidable while the overlay exists.
+* **Status:** `[DECIDED BY: HUMAN]`
+* **Anchors:** `OverlayController -> attachHandleTouch`, `openChip`, `setPercent`; `volume_chip.xml`.
+
+### [TRAP: Literal Percent Signs In Strings] | Aliases: StringFormatInvalid, lint, 10%
+> **1-Line Summary:** A string containing `10%` or `0%` is treated as a format specifier by lint and fails the build.
+* **Avoidance:** Mark such strings `formatted="false"` (or escape as `%%`); `notif_status` legitimately uses `%1$d%%` with an argument.
+* **Anchors:** `app/src/main/res/values/strings.xml` -> `main_intro`, `zero_percent`, `notif_status`.
 
 ## 2. Traps
 

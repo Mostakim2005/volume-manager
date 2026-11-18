@@ -26,16 +26,16 @@ flowchart TD
 ### [SUBSYSTEM: Overlay Window Management] | Aliases: WindowManager, edge snap, drag, touch
 > **1-Line Summary:** One controller owns both overlay windows and every `addView`/`updateViewLayout`/`removeView` call, keeping the service lifecycle clean.
 * Both windows use `TYPE_APPLICATION_OVERLAY` (fallback `TYPE_PHONE` below API 26), `FLAG_NOT_FOCUSABLE or FLAG_NOT_TOUCH_MODAL`, `PixelFormat.TRANSLUCENT`, and `Gravity.TOP or Gravity.START`.
-* Drag: `ACTION_DOWN` stores layout + raw coordinates; `ACTION_MOVE` sets X freely and snaps Y to a ~16 dp grid; `ACTION_UP` treats sub-slop movement as a click and otherwise animates X to the nearest edge with `ValueAnimator`.
-* The panel is pre-measured, positioned beside the docked edge via `positionPanel()`, and re-anchored whenever the handle snaps or the configuration changes.
-* Anchors: `OverlayController -> overlayParams`, `attachHandleTouchListener`, `snapToNearestEdge`, `positionPanel`, `configReceiver`.
+* Edge handle: `ACTION_DOWN` records layout + raw coordinates; `ACTION_MOVE` decides once whether the gesture is horizontal (move the handle) or vertical (change volume); `ACTION_UP` treats sub-slop movement as a tap that toggles the chip, and animates X to the nearest edge after a move.
+* The chip is positioned beside the docked edge via `positionChip()` and re-anchored on handle movement, edge snap, and configuration changes.
+* Anchors: `OverlayController -> overlayParams`, `attachHandleTouch`, `snapToEdge`, `positionChip`, `configReceiver`.
 
-### [SUBSYSTEM: Volume Mapping] | Aliases: AudioManager, stepped slider, 10 percent
-> **1-Line Summary:** Each Material slider is configured programmatically (0–100, `stepSize = 10f`) and converts its percentage to the stream's max volume with rounding/clamping.
-* `bindSliders()` wires `Slider.addOnChangeListener`; `isSyncingSliders` prevents feedback loops.
-* `streamToPercent()` guards against `max <= 0` to avoid division by zero.
-* `syncSlidersFromAudio()` refreshes all four sliders whenever the panel opens.
-* Anchors: `OverlayController -> bindSliders`, `syncSlidersFromAudio`, `streamToPercent`.
+### [SUBSYSTEM: Volume Mapping] | Aliases: AudioManager, SeekBar, 10 percent steps
+> **1-Line Summary:** The chip's `SeekBar` has `max = 10`; each step maps to 10% of the active stream's max volume with rounding and clamping.
+* `setPercent()` is the single write path used by both the edge-handle vertical drag and the SeekBar.
+* `currentPercent()` guards against `max <= 0`; programmatic SeekBar updates are ignored via `fromUser`.
+* The active stream is switched from the compact inline options list, not from four permanent sliders.
+* Anchors: `OverlayController -> setPercent`, `currentPercent`, `openChip`.
 
 ### [SUBSYSTEM: Boot & OEM Survival] | Aliases: BOOT_COMPLETED, locked boot, auto-launch, battery
 > **1-Line Summary:** Boot handling defers locked starts until unlock, and deep-link buttons surface the manual Realme UI settings the OS needs.
@@ -61,6 +61,6 @@ flowchart LR
 ## 3. Extension Recipes
 
 * **Change drag granularity:** edit `dragStepPx` in `OverlayController` (16 dp default); set to 1 dp for fluid dragging.
-* **Change volume intervals:** edit `slider.stepSize = 10f` in `OverlayController -> bindSliders` (5f for 20 steps, 20f for 5 steps).
-* **Add a fifth stream:** add a slider id in `volume_panel.xml`, append it to `streamSliderIds` and its `AudioManager.STREAM_*` to `streams` in `OverlayController`; no service changes needed.
+* **Change volume intervals:** edit `SeekBar.max` in `volume_chip.xml` and multiply `progress` accordingly in `OverlayController -> openChip` / `setPercent` (max 20 gives 5% steps).
+* **Add a fifth stream:** add an option id in `volume_chip.xml`, append it to `optionIds`, its `AudioManager.STREAM_*` to `streams`, and its label to `labels` in `OverlayController`; no service changes needed.
 * **Add a Realme model:** append a candidate component to the matching list in `RealmeSettings -> openAutoLaunch` / `openAppBatteryManagement`.

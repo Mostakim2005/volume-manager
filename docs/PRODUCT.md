@@ -7,29 +7,29 @@
 
 ## 2. Active Features (Do Not Break)
 
-### [FEATURE: Edge-Docking Overlay Handle] | Aliases: floating pill, smart sidebar, drag handle, edge snap
-> **1-Line Summary:** A draggable overlay pill that moves in discrete vertical steps and animates to the nearest screen edge on release.
-* **User Intention (Non-Negotiable):** Mimic Realme's native Smart Sidebar so volume control is reachable with one thumb without leaving the current app.
-* **Visual / UI Behavior:** 40×84 dp gradient pill; drag with `ACTION_MOVE`, snap Y to a ~16 dp grid, animate X to edge on `ACTION_UP`, tap (movement below slop) opens the panel.
+### [FEATURE: Edge-Docking Volume Handle] | Aliases: orange pill, sidebar overlay, drag handle, edge snap
+> **1-Line Summary:** A 44 dp orange squircle on the screen edge: drag vertically to change volume in 10% steps, drag horizontally to move and snap, tap to toggle the chip.
+* **User Intention (Non-Negotiable):** Mimic Realme's Smart Sidebar with a tiny, always-reachable volume control that works without opening the app.
+* **Visual / UI Behavior:** Vertical-dominant movement adjusts the active stream; horizontal-dominant movement moves the handle and animates it to the nearest edge on release; a sub-slop tap toggles the chip.
 * **Code Anchors:**
-  * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `show`, `attachHandleTouchListener`, `snapToNearestEdge`, `positionPanel`
+  * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `show`, `attachHandleTouch`, `snapToEdge`, `setPercent`
   * `app/src/main/res/layout/floating_handle.xml` -> `handle_root`, `handle_icon`
 
-### [FEATURE: Stepped Volume Panel] | Aliases: sliders, volume card, discrete steps, interval control
-> **1-Line Summary:** An expandable card with four Material sliders that snap to 10 discrete positions and map onto `AudioManager` streams.
-* **User Intention (Non-Negotiable):** Replace fiddly 15-step hardware volume with predictable, repeatable percentage steps for Media, Ring, Alarm and Notification.
-* **Visual / UI Behavior:** Card opens beside the docked edge; `stepSize = 10f`; values re-sync from the system on every open; close button and outside-tap collapse.
+### [FEATURE: Compact Volume Chip] | Aliases: small overlay, bar only, movable chip, stream selector
+> **1-Line Summary:** A tiny movable chip containing only a 10-step SeekBar and a tappable stream label that expands Media / Ring / Alarm / Notify. No +/- buttons.
+* **User Intention (Non-Negotiable):** Keep the UI minimal — dragging is the only volume gesture; the chip can be dragged anywhere on screen.
+* **Visual / UI Behavior:** `SeekBar` max 10, each step = 10%; percentage shown beside the stream label; whole chip draggable except the bar and label; options expand inline when the label is tapped.
 * **Code Anchors:**
-  * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `openPanel`, `bindSliders`, `syncSlidersFromAudio`, `streamToPercent`
-  * `app/src/main/res/layout/volume_panel.xml` -> `slider_music`, `slider_ring`, `slider_alarm`, `slider_notification`
+  * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `openChip`, `attachChipDrag`, `setPercent`, `positionChip`
+  * `app/src/main/res/layout/volume_chip.xml` -> `chip_seek`, `chip_stream`, `chip_options`
 
 ### [FEATURE: Persistent Foreground Service] | Aliases: notification, keep-alive, START_STICKY
 > **1-Line Summary:** A silent foreground service with a low-importance notification and quick volume actions that keeps the overlay alive.
 * **User Intention (Non-Negotiable):** The utility must survive memory pressure and not be killed by Realme UI's background restrictions.
-* **Visual / UI Behavior:** `IMPORTANCE_LOW` channel (no sound, no badge), ongoing notification with media −/+ , panel toggle and stop actions; tapping it opens MainActivity.
+* **Visual / UI Behavior:** `IMPORTANCE_LOW` channel (no sound, no badge), ongoing single-row notification showing "Edge volume · NN%" with a thin progress strip and no action buttons; tapping the row toggles the chip.
 * **Code Anchors:**
-  * `app/src/main/java/com/volumemanager/OverlayVolumeService.kt` -> `onCreate`, `onStartCommand`, `startPersistentNotification`, `buildNotification`
-  * `app/src/main/res/layout/notification_volume.xml` -> `notif_status`, `notif_media_down`, `notif_media_up`, `notif_toggle`, `notif_stop`
+  * `app/src/main/java/com/volumemanager/OverlayVolumeService.kt` -> `onCreate`, `onStartCommand`, `buildNotification`, `scheduleNotificationRefresh`
+  * `app/src/main/res/layout/notification_volume.xml` -> `notif_status`, `notif_progress`, `notif_root`
 
 ### [FEATURE: Boot Auto-Start] | Aliases: reboot survival, BOOT_COMPLETED, auto-launch
 > **1-Line Summary:** A boot receiver that restarts the service after reboot, deferring locked-boot starts until the user unlocks.

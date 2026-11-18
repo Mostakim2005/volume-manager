@@ -53,11 +53,13 @@ APK output: `app\build\outputs\apk\debug\app-debug.apk`
 
 ## Interaction
 
-- Drag the pill vertically — the Y position moves in discrete ~16 dp steps.
-- Release — the pill animates to the nearest screen edge.
-- Tap the pill — the volume card opens beside the docked edge.
-- Drag a slider — it snaps to one of 10 discrete positions (0, 10, … 100%).
-- Notification actions: media −, media +, toggle panel, stop service.
+- Drag the **orange edge pill vertically** — volume changes in 10% steps.
+- Drag it **horizontally** — it moves and snaps to the nearest edge on release.
+- **Tap** the pill — the compact volume chip shows or hides.
+- Drag the **chip's bar** — it snaps to one of 11 positions (0…100%). No +/- buttons.
+- Tap **Media ▾** on the chip — switch between Media, Ring, Alarm and Notify.
+- Drag the chip by its background — move it anywhere on screen.
+- Tap the notification row — toggle the chip. The bar there is display-only (Android notifications cannot receive drag gestures).
 
 ## Project layout
 
