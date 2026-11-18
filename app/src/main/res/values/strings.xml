@@ -11,7 +11,7 @@
     <string name="notif_media_down">Volume icon</string>
 
     <!-- Main activity -->
-    <string name="main_intro">Drag the orange edge pill up or down to change volume in 10% steps. Tap it to show the compact volume chip; drag the chip anywhere on screen.</string>
+    <string name="main_intro" formatted="false">Drag the orange edge pill up or down to change volume in 10% steps. Tap it to show the compact volume chip; drag the chip anywhere on screen.</string>
     <string name="main_setup_heading">Realme 6 / Realme UI setup (required)</string>
     <string name="main_setup_hint">Auto-launch must be ON or Realme UI blocks the boot receiver after a restart. In App Battery Management allow both background and foreground activity.</string>
     <string name="btn_overlay">Display over other apps</string>
@@ -29,5 +29,5 @@
     <string name="stream_ring_short">Ring</string>
     <string name="stream_alarm_short">Alarm</string>
     <string name="stream_notify_short">Notify</string>
-    <string name="zero_percent">0%</string>
+    <string name="zero_percent" formatted="false">0%</string>
 </resources>
