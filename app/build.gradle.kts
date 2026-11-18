@@ -18,6 +18,20 @@ android {
         versionName = "1.0.0"
     }
 
+    // CI supplies these env vars; local builds simply produce an unsigned APK.
+    signingConfigs {
+        create("release") {
+            val storePass = System.getenv("VM_STORE_PASSWORD")
+            if (!storePass.isNullOrBlank()) {
+                storeFile = file("release.jks")
+                storePassword = storePass
+                keyAlias = System.getenv("VM_KEY_ALIAS") ?: "volume"
+                keyPassword = System.getenv("VM_KEY_PASSWORD") ?: storePass
+            }
+        }
+    }
+    val releaseSigning = signingConfigs.getByName("release")
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -25,6 +39,19 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            if (releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            }
+        }
+    }
+
+    // RMX2001 is arm64-v8a: ship only that ABI to keep the release APK small.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a")
+            isUniversalApk = false
         }
     }
 

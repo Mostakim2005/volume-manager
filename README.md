@@ -19,6 +19,24 @@ machine with the toolchain before distributing.
 
 APK output: `app\build\outputs\apk\debug\app-debug.apk`
 
+## CI / release
+
+* **CI** (`.github/workflows/ci.yml`) runs `assembleDebug` + `lintDebug` on every
+  push and PR to `main`.
+* **Releases** (`.github/workflows/release.yml`) run when you push an annotated
+  version tag, e.g.:
+
+  ```powershell
+  git tag -a v1.0.0 -m "Release 1.0.0"
+  git push origin v1.0.0
+  ```
+
+  The workflow builds a **signed, arm64-v8a-only** APK and attaches it to the
+  generated GitHub Release. By default it generates a fresh CI keystore for that
+  run. For a stable signing identity, add repository secrets:
+  `RELEASE_KEYSTORE_BASE64` (base64 of a JKS), `RELEASE_STORE_PASSWORD`,
+  `RELEASE_KEY_PASSWORD`, `RELEASE_KEY_ALIAS`.
+
 ## Install & Realme UI setup
 
 1. Install the APK and open the app.
