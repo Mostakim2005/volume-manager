@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Volume Manager — Notification Shade & Theme Contrast Preview</title>
+<title>Volume Manager — Notification Shade with Draggable Ball & Stream Pop-Up</title>
 <style>
   :root {
     --orange: #ff6b3d;
     --orange-dark: #f4511e;
-    --salmon: #ff7a6b;
+    --green-thumb: #10b981;
+    --green-glow: rgba(16, 185, 129, 0.4);
     --ink: #1f2029;
-    --muted: #69697a;
-    --line: #e2e4ea;
-    --bg-page: #f0f2f7;
-    --green: #10b981;
-    --red: #ef4444;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --bg-page: #f8fafc;
+    --card-surface: #ffffff;
   }
   * { box-sizing: border-box; }
   body {
@@ -33,32 +33,32 @@
   }
   .header-wrap { max-width: 1240px; margin: 0 auto; }
   h1 { font-size: 24px; font-weight: 800; margin: 0 0 6px; letter-spacing: -0.4px; }
-  header p { margin: 0; color: var(--muted); font-size: 14px; max-width: 860px; line-height: 1.5; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; max-width: 900px; line-height: 1.5; }
 
-  /* Theme Switcher Banner */
-  .theme-toggle-bar {
+  /* Theme Switcher Bar */
+  .theme-bar {
     display: flex; align-items: center; justify-content: space-between;
     background: #fff; border: 1px solid var(--line); border-radius: 14px;
     padding: 12px 20px; max-width: 1240px; margin: 24px auto 0;
     box-shadow: 0 4px 16px rgba(0,0,0,0.03);
   }
-  .toggle-group { display: flex; gap: 8px; }
+  .theme-btn-group { display: flex; gap: 8px; }
   .theme-btn {
     display: inline-flex; align-items: center; gap: 6px;
-    background: #f1f3f9; border: 1px solid var(--line); border-radius: 8px;
+    background: #f1f5f9; border: 1px solid var(--line); border-radius: 8px;
     padding: 8px 16px; font-size: 13px; font-weight: 700; color: var(--ink);
     cursor: pointer; transition: all 0.15s;
   }
-  .theme-btn:hover { background: #e5e8f2; }
+  .theme-btn:hover { background: #e2e8f0; }
   .theme-btn.active {
-    background: #1f2029; color: #fff; border-color: #1f2029;
+    background: #0f172a; color: #fff; border-color: #0f172a;
   }
 
   /* Grid Layout */
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-    gap: 28px;
+    grid-template-columns: repeat(auto-fit, minmax(370px, 1fr));
+    gap: 32px;
     max-width: 1240px;
     margin: 24px auto 60px;
     padding: 0 20px;
@@ -66,26 +66,25 @@
 
   /* Stage Card */
   .stage-card {
-    background: #fff;
+    background: var(--card-surface);
     border: 1px solid var(--line);
-    border-radius: 22px;
-    padding: 20px;
-    box-shadow: 0 10px 28px rgba(20, 24, 48, 0.05);
+    border-radius: 24px;
+    padding: 22px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
     display: flex;
     flex-direction: column;
   }
   .stage-header {
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f0f1f5;
+    margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9;
   }
   .stage-title { font-size: 16px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 8px; }
   .tag {
     font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
     padding: 3px 8px; border-radius: 6px;
   }
-  .tag.current { background: #fee2e2; color: #b91c1c; }
-  .tag.opt1 { background: #eff6ff; color: #1d4ed8; }
-  .tag.opt2 { background: #ecfdf5; color: #047857; }
+  .tag.old { background: #fee2e2; color: #991b1b; }
+  .tag.new { background: #ecfdf5; color: #065f46; }
 
   /* Notification Shade Simulator Phone Frame */
   .phone-frame {
@@ -93,53 +92,36 @@
     width: 320px;
     height: 600px;
     margin: 0 auto;
-    border: 9px solid #1a1a24;
+    border: 9px solid #0f172a;
     border-radius: 40px;
     overflow: hidden;
     transition: background 0.25s ease;
     user-select: none;
-    box-shadow: 0 22px 50px rgba(15, 23, 42, 0.25);
+    box-shadow: 0 24px 55px rgba(15, 23, 42, 0.3);
   }
 
-  /* Light Theme Shade */
-  .phone-frame.mode-light {
-    background: #f4f5f9;
-  }
-  .phone-frame.mode-light .shade-header {
-    color: #1f2029;
-  }
-  .phone-frame.mode-light .quick-tile {
-    background: #e2e4ec; color: #474759;
-  }
-  .phone-frame.mode-light .quick-tile.on {
-    background: var(--orange); color: #fff;
-  }
+  /* Theme Modes */
+  .phone-frame.mode-light { background: #f1f5f9; }
+  .phone-frame.mode-light .shade-header { color: #0f172a; }
+  .phone-frame.mode-light .quick-tile { background: #e2e8f0; color: #334155; }
+  .phone-frame.mode-light .quick-tile.on { background: var(--orange); color: #fff; }
   .phone-frame.mode-light .notif-card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.04);
   }
-  .phone-frame.mode-light .notif-app-name { color: #5a5a6e; }
+  .phone-frame.mode-light .notif-app-name { color: #64748b; }
+  .phone-frame.mode-light .status-bar { color: #0f172a; }
+  .phone-frame.mode-light .notif-track-bg { background: #e2e8f0; }
 
-  /* Dark Theme Shade */
-  .phone-frame.mode-dark {
-    background: #12131a;
-  }
-  .phone-frame.mode-dark .shade-header {
-    color: #f1f2f6;
-  }
-  .phone-frame.mode-dark .quick-tile {
-    background: #232430; color: #a1a1b5;
-  }
-  .phone-frame.mode-dark .quick-tile.on {
-    background: var(--orange); color: #fff;
-  }
+  .phone-frame.mode-dark { background: #0b0f19; }
+  .phone-frame.mode-dark .shade-header { color: #f8fafc; }
+  .phone-frame.mode-dark .quick-tile { background: #1e293b; color: #94a3b8; }
+  .phone-frame.mode-dark .quick-tile.on { background: var(--orange); color: #fff; }
   .phone-frame.mode-dark .notif-card {
-    background: #1c1d27;
-    border: 1px solid #2d2e3d;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    background: #151c2e; border: 1px solid #232f48; box-shadow: 0 6px 16px rgba(0,0,0,0.4);
   }
-  .phone-frame.mode-dark .notif-app-name { color: #8e8ea6; }
+  .phone-frame.mode-dark .notif-app-name { color: #94a3b8; }
+  .phone-frame.mode-dark .status-bar { color: #fff; }
+  .phone-frame.mode-dark .notif-track-bg { background: #26334f; }
 
   /* Punch Hole & Status Bar */
   .punch-hole {
@@ -151,10 +133,8 @@
     display: flex; justify-content: space-between; align-items: center;
     font-size: 11px; font-weight: 600; z-index: 10;
   }
-  .mode-light .status-bar { color: #1a1a24; }
-  .mode-dark .status-bar { color: #fff; }
 
-  /* Notification Shade Chrome */
+  /* Shade Content */
   .shade-content {
     position: absolute; inset: 40px 14px 20px;
     display: flex; flex-direction: column;
@@ -166,7 +146,6 @@
   .shade-clock { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
   .shade-date { font-size: 11px; opacity: 0.8; }
 
-  /* Quick Setting Tiles */
   .quick-settings-grid {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;
   }
@@ -177,12 +156,12 @@
   }
   .quick-tile span { font-size: 9px; font-weight: 700; }
 
-  /* Notification Card Container */
+  /* Notification Card Base */
   .notif-card {
-    border-radius: 16px;
-    padding: 12px 14px;
+    border-radius: 18px;
+    padding: 13px 15px;
     margin-bottom: 12px;
-    transition: all 0.2s ease;
+    position: relative;
   }
   .notif-meta {
     display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
@@ -196,125 +175,157 @@
   .notif-time { font-size: 10px; color: var(--muted); }
 
   /* ------------------------------------------------------------- */
-  /* Specific Notification Layouts                                 */
+  /* NEW NOTIFICATION: DRAGGABLE BALL + POPUP (Image 2 & 3)        */
   /* ------------------------------------------------------------- */
 
-  /* 1. CURRENT NOTIFICATION (Buggy in Dark Mode) */
-  .notif-current-body {
-    display: flex; align-items: center; gap: 10px;
+  /* Clickable Stream Header Area (Image 3 annotated green circle) */
+  .notif-stream-header {
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: pointer; padding: 3px 8px; margin-left: -4px;
+    border-radius: 8px; transition: background 0.15s;
   }
-  .notif-current-icon {
-    width: 24px; height: 24px; border-radius: 50%;
-    background: #ffebe5; color: var(--orange-dark);
-    display: grid; place-items: center; font-size: 12px; flex-shrink: 0;
-  }
-  .notif-current-text-wrap { flex: 1; }
+  .phone-frame.mode-light .notif-stream-header:hover { background: #e2e8f0; }
+  .phone-frame.mode-dark .notif-stream-header:hover { background: #232f48; }
 
-  /* This is the exact bug: hardcoded #1A1A24 in XML */
-  .text-current-hardcoded {
-    color: #1a1a24 !important; /* Hardcoded @color/text_primary */
-    font-size: 13px; font-weight: 700; line-height: 1.3;
+  .notif-speaker-icon {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #ffedd5; color: #ea580c; display: grid; place-items: center;
+    font-size: 11px; flex-shrink: 0;
   }
-  .mode-dark .bug-highlight {
-    background: rgba(239, 68, 68, 0.2);
-    border: 1px dashed #ef4444;
-    border-radius: 4px; padding: 2px 4px;
-  }
-  .bug-callout {
-    margin-top: 6px; font-size: 10px; font-weight: 800; color: #ef4444;
-    display: none;
-  }
-  .mode-dark .bug-callout { display: block; }
-
-  /* Progress Bar */
-  .notif-progress-bg {
-    width: 100%; height: 6px; background: #e2e4ea; border-radius: 3px;
-    overflow: hidden; margin-top: 6px;
-  }
-  .mode-dark .notif-progress-bg { background: #353648; }
-  .notif-progress-fill {
-    height: 100%; width: 50%; background: var(--orange); border-radius: 3px;
+  .mode-dark .notif-speaker-icon {
+    background: rgba(255, 107, 61, 0.2); color: #ff7a6b;
   }
 
-  /* 2. OPTION 1: MINIMAL & THEME ADAPTIVE */
-  .text-opt1-adaptive {
-    font-size: 13px; font-weight: 700; line-height: 1.3;
+  .notif-title-text {
+    font-size: 13px; font-weight: 800; line-height: 1.2;
   }
-  .mode-light .text-opt1-adaptive { color: #1a1a24; }
-  .mode-dark .text-opt1-adaptive { color: #f4f5f9; }
+  .mode-light .notif-title-text { color: #0f172a; }
+  .mode-dark .notif-title-text { color: #f8fafc; }
 
-  /* 3. OPTION 2: ACTIONABLE CONTROLS */
-  .text-opt2-title {
-    font-size: 12px; font-weight: 700; display: flex; justify-content: space-between;
-  }
-  .mode-light .text-opt2-title { color: #1a1a24; }
-  .mode-dark .text-opt2-title { color: #f4f5f9; }
-  .opt2-actions-row {
-    display: flex; gap: 8px; margin-top: 10px;
-  }
-  .btn-notif-action {
-    flex: 1; height: 32px; border-radius: 8px;
-    border: 1px solid; display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 800; cursor: pointer; transition: all 0.1s;
-  }
-  .mode-light .btn-notif-action {
-    background: #f1f2f8; border-color: #e2e4ed; color: #2c2d3a;
-  }
-  .mode-light .btn-notif-action:active { background: #e2e4ed; }
-  .mode-dark .btn-notif-action {
-    background: #272836; border-color: #3d3e52; color: #f0f1f7;
-  }
-  .mode-dark .btn-notif-action:active { background: #343649; }
-  .btn-notif-action.btn-toggle {
-    background: var(--orange) !important; color: #fff !important; border-color: var(--orange) !important;
+  .stream-caret {
+    font-size: 10px; color: #94a3b8; transition: transform 0.2s;
   }
 
-  /* Stage Controls & Notes */
+  /* Track with Green Ball & Discrete Step Ticks (Image 2) */
+  .notif-scrubber-wrap {
+    position: relative;
+    width: 100%; height: 26px;
+    display: flex; align-items: center;
+    margin-top: 6px; cursor: pointer;
+  }
+  .notif-track-bg {
+    width: 100%; height: 8px; border-radius: 4px;
+    position: relative; overflow: hidden;
+  }
+  .notif-track-fill {
+    height: 100%; background: linear-gradient(90deg, #ff7a6b, #f4511e);
+    border-radius: 4px; transition: width 0.08s ease-out;
+  }
+  .track-ticks-layer {
+    position: absolute; inset: 0; display: flex; justify-content: space-between;
+    padding: 0 4px; pointer-events: none;
+  }
+  .tick-dot {
+    width: 2px; height: 100%; background: rgba(255,255,255,0.4);
+  }
+
+  /* The Green Ball (User Sketch Image 2) */
+  .green-ball-thumb {
+    position: absolute; top: 50%;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--green-thumb);
+    border: 2.5px solid #ffffff;
+    box-shadow: 0 2px 8px var(--green-glow), 0 1px 3px rgba(0,0,0,0.3);
+    transform: translate(-50%, -50%);
+    cursor: grab; z-index: 5;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .green-ball-thumb:active {
+    cursor: grabbing; transform: translate(-50%, -50%) scale(1.22);
+    box-shadow: 0 4px 14px var(--green-glow);
+  }
+
+  /* Stream Selection Pop-Up Inside Notification (Image 3) */
+  .notif-stream-popup {
+    position: absolute; top: 48px; left: 14px;
+    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.28);
+    padding: 5px; z-index: 30; width: 140px;
+    transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  .mode-dark .notif-stream-popup {
+    background: #1e293b; border-color: #334155; box-shadow: 0 12px 28px rgba(0,0,0,0.6);
+  }
+  .notif-stream-popup.hidden {
+    opacity: 0; pointer-events: none; transform: scale(0.9) translateY(-6px);
+  }
+  .notif-popup-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 8px; font-size: 12px; font-weight: 700;
+    color: #334155; cursor: pointer; transition: background 0.15s;
+  }
+  .mode-dark .notif-popup-item { color: #e2e8f0; }
+  .notif-popup-item:hover { background: #f1f5f9; }
+  .mode-dark .notif-popup-item:hover { background: #334155; }
+  .notif-popup-item.active { background: #ecfdf5; color: #047857; }
+  .mode-dark .notif-popup-item.active { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+
+  /* Controls & Notes */
   .stage-controls {
-    margin-top: 16px; padding-top: 12px; border-top: 1px solid #f0f1f5;
-    font-size: 12px; color: var(--muted);
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid #f1f5f9;
   }
+  .control-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; font-size: 12px; color: var(--muted);
+  }
+  .btn-action {
+    background: #f1f5f9; border: 1px solid var(--line); border-radius: 8px;
+    padding: 6px 12px; font-size: 12px; font-weight: 700; color: var(--ink);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-action:hover { background: #e2e8f0; }
+
   .notes-box {
-    margin-top: 16px; background: #fbfbfd; border: 1px solid #ebebf0;
-    border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.5; color: #4b4b5b;
+    margin-top: 16px; background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 14px 16px; font-size: 12px; line-height: 1.5; color: #334155;
   }
-  .notes-box b { color: #1f2029; }
+  .notes-box b { color: #0f172a; }
   .notes-box ul { margin: 6px 0 0; padding-left: 18px; }
-  .notes-box li { margin-bottom: 4px; }
+  .notes-box li { margin-bottom: 5px; }
 </style>
 </head>
 <body>
 
 <header>
   <div class="header-wrap">
-    <h1>Volume Manager — Notification Shade & Theme Contrast Preview</h1>
-    <p>Demonstrating notification rendering, theme adaptation, and action button layouts across Android Light and Dark themes. Notice the critical text contrast failure in the current release when Dark Mode is active.</p>
+    <h1>Volume Manager — Notification Shade with Draggable Ball & Stream Pop-Up</h1>
+    <p>Redesigned strictly according to your handwritten sketches: an interactive scrubbable track with a prominent green ball/thumb that snaps forward and reverse across discrete intervals, plus a stream pop-up when tapping the title area.</p>
   </div>
 </header>
 
-<!-- Global Theme Toggle -->
-<div class="theme-toggle-bar">
+<!-- Global Theme Switcher -->
+<div class="theme-bar">
   <div>
     <b style="font-size: 14px;">System Theme Simulator:</b>
-    <span style="font-size: 13px; color: var(--muted); margin-left: 6px;">Switch themes to observe contrast behavior</span>
+    <span style="font-size: 13px; color: var(--muted); margin-left: 6px;">Toggle to see high-contrast WCAG AAA colors</span>
   </div>
-  <div class="toggle-group">
+  <div class="theme-btn-group">
     <button class="theme-btn" id="btnLight" onclick="setTheme('light')">☀️ Light Mode</button>
-    <button class="theme-btn active" id="btnDark" onclick="setTheme('dark')">🌙 Dark Mode (Bug Test)</button>
+    <button class="theme-btn active" id="btnDark" onclick="setTheme('dark')">🌙 Dark Mode</button>
   </div>
 </div>
 
 <main class="grid-container">
 
   <!-- ============================================================== -->
-  <!-- 1. CURRENT IMPLEMENTATION (Commit 4d66ec0)                      -->
+  <!-- 1. BEFORE (Static Non-Interactive Track)                       -->
   <!-- ============================================================== -->
   <div class="stage-card">
     <div class="stage-header">
-      <h2 class="stage-title">Current Implementation <span class="tag current">Contrast Bug</span></h2>
+      <h2 class="stage-title">Before (Previous Minimal) <span class="tag old">Static Bar Only</span></h2>
     </div>
 
-    <div class="phone-frame mode-dark" id="frameCurrent">
+    <div class="phone-frame mode-dark" id="frameOld">
       <div class="punch-hole"></div>
       <div class="status-bar">
         <span>17:00</span>
@@ -334,53 +345,45 @@
           <div class="quick-tile">🔦<span>Torch</span></div>
         </div>
 
-        <!-- Volume Manager Notification Card -->
-        <div class="notif-card" style="cursor: pointer;" title="Tapping toggles the floating overlay chip">
+        <!-- Old Notification Card -->
+        <div class="notif-card" style="opacity: 0.7;">
           <div class="notif-meta">
             <div class="notif-app-icon">◁))</div>
             <div class="notif-app-name">Volume Manager</div>
             <div class="notif-time">now</div>
           </div>
-          <div class="notif-current-body">
-            <div class="notif-current-icon">🔉</div>
-            <div class="notif-current-text-wrap">
-              <div class="text-current-hardcoded bug-highlight">
-                Media volume: 50%
-              </div>
-              <div class="notif-progress-bg">
-                <div class="notif-progress-fill"></div>
-              </div>
-              <div class="bug-callout">⚠️ INVISIBLE TEXT BUG: #1A1A24 ON #1C1D27 DARK SHADE!</div>
-            </div>
+          <div style="font-size: 13px; font-weight: 700; color: #94a3b8;">
+            Media volume: 60%
+          </div>
+          <!-- Static bar without thumb -->
+          <div style="width: 100%; height: 6px; background: #26334f; border-radius: 3px; margin-top: 8px; overflow: hidden;">
+            <div style="width: 60%; height: 100%; background: #ff6b3d;"></div>
           </div>
         </div>
 
       </div>
     </div>
 
-    <div class="stage-controls">
-      <b>Interactivity:</b> Tap notification to simulate sending <code>ACTION_TOGGLE_CHIP</code>.
-    </div>
-
     <div class="notes-box">
-      <b>Current Deficiencies:</b>
+      <b>Why You Asked For Changes:</b>
       <ul>
-        <li><b>Dark Mode Invisibility:</b> Text color is hardcoded to <code>@color/text_primary</code> (<code>#1A1A24</code>), turning completely black and unreadable on dark backgrounds.</li>
-        <li><b>Zero Shade Actions:</b> Quick +/- buttons were stripped in commit <code>4d66ec0</code>; users must open the overlay to change volume.</li>
+        <li><b>Non-Interactive:</b> The bar was purely a display progress strip; you couldn't scrub it directly.</li>
+        <li><b>Locked to Media:</b> There was no way to switch to Ringtone or Notification streams from the shade.</li>
+        <li><b>No Visible Intervals:</b> You couldn't tell where the discrete volume steps were located.</li>
       </ul>
     </div>
   </div>
 
 
   <!-- ============================================================== -->
-  <!-- 2. OPTION 1: MINIMAL & THEME ADAPTIVE                           -->
+  <!-- 2. AFTER: DRAGGABLE GREEN BALL + STREAM POP-UP (User Vision)   -->
   <!-- ============================================================== -->
   <div class="stage-card">
     <div class="stage-header">
-      <h2 class="stage-title">Option 1: Minimal Adaptive <span class="tag opt1">Clean & Safe</span></h2>
+      <h2 class="stage-title">After (Interactive Green Ball & Pop-Up) <span class="tag new">User Sketch</span></h2>
     </div>
 
-    <div class="phone-frame mode-dark" id="frameOpt1">
+    <div class="phone-frame mode-dark" id="frameNew">
       <div class="punch-hole"></div>
       <div class="status-bar">
         <span>17:00</span>
@@ -400,109 +403,80 @@
           <div class="quick-tile">🔦<span>Torch</span></div>
         </div>
 
-        <!-- Volume Manager Notification Card -->
-        <div class="notif-card" style="cursor: pointer;" title="Tapping toggles the floating overlay chip">
-          <div class="notif-meta">
-            <div class="notif-app-icon">◁))</div>
-            <div class="notif-app-name">Volume Manager</div>
-            <div class="notif-time">now</div>
-          </div>
-          <div class="notif-current-body">
-            <div class="notif-current-icon">🔉</div>
-            <div class="notif-current-text-wrap">
-              <div class="text-opt1-adaptive">
-                Media volume: <span id="volOpt1Text">60%</span>
-              </div>
-              <div class="notif-progress-bg">
-                <div class="notif-progress-fill" id="volOpt1Fill" style="width: 60%;"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <div class="stage-controls">
-      <b>Theme Adaptation:</b> Uses <code>?android:attr/textColorPrimary</code> for WCAG AAA contrast.
-    </div>
-
-    <div class="notes-box">
-      <b>Why Option 1 Works:</b>
-      <ul>
-        <li><b>Perfect Contrast:</b> White in Dark Mode, dark slate in Light Mode.</li>
-        <li><b>Ultra Low Profile:</b> Uses minimal notification height, ideal for users who dislike cluttered shades.</li>
-        <li><b>Tap Target:</b> Tapping launches or collapses the overlay chip.</li>
-      </ul>
-    </div>
-  </div>
-
-
-  <!-- ============================================================== -->
-  <!-- 3. OPTION 2: ACTIONABLE SHADE CONTROLS                          -->
-  <!-- ============================================================== -->
-  <div class="stage-card">
-    <div class="stage-header">
-      <h2 class="stage-title">Option 2: Actionable Controls <span class="tag opt2">High Utility</span></h2>
-    </div>
-
-    <div class="phone-frame mode-dark" id="frameOpt2">
-      <div class="punch-hole"></div>
-      <div class="status-bar">
-        <span>17:00</span>
-        <div><span>LTE</span> <span>82%</span></div>
-      </div>
-
-      <div class="shade-content">
-        <div class="shade-header">
-          <div class="shade-clock">17:00</div>
-          <div class="shade-date">Wed, Nov 18</div>
-        </div>
-
-        <div class="quick-settings-grid">
-          <div class="quick-tile on">📶<span>Wi-Fi</span></div>
-          <div class="quick-tile on">📶<span>Data</span></div>
-          <div class="quick-tile">🌙<span>DND</span></div>
-          <div class="quick-tile">🔦<span>Torch</span></div>
-        </div>
-
-        <!-- Volume Manager Notification Card with Buttons -->
+        <!-- Redesigned Notification Card -->
         <div class="notif-card">
           <div class="notif-meta">
             <div class="notif-app-icon">◁))</div>
             <div class="notif-app-name">Volume Manager</div>
             <div class="notif-time">now</div>
           </div>
-          <div class="text-opt2-title">
-            <span>Media Stream</span>
-            <span id="volOpt2Text">60%</span>
-          </div>
-          <div class="notif-progress-bg" style="margin-top: 6px;">
-            <div class="notif-progress-fill" id="volOpt2Fill" style="width: 60%;"></div>
+
+          <!-- Clickable Stream Title (Image 3 annotated green area) -->
+          <div class="notif-stream-header" onclick="toggleStreamPopup()" title="Click to select Media, Ring, Notification">
+            <div class="notif-speaker-icon" id="streamIconDisplay">🎵</div>
+            <div class="notif-title-text">
+              <span id="activeStreamText">Media</span> volume: <span id="volNumText">60%</span>
+            </div>
+            <span class="stream-caret">▾</span>
           </div>
 
-          <!-- Quick Actions directly in shade -->
-          <div class="opt2-actions-row">
-            <button class="btn-notif-action" onclick="stepVol(-10)" title="Decrease 10%">− 10%</button>
-            <button class="btn-notif-action" onclick="stepVol(10)" title="Increase 10%">+ 10%</button>
-            <button class="btn-notif-action" id="btnMute" onclick="toggleMute()" title="Mute/Unmute">Mute</button>
-            <button class="btn-notif-action btn-toggle" title="Toggle floating chip on screen">Overlay</button>
+          <!-- Draggable Track with Green Ball & Step Intervals (Image 2) -->
+          <div class="notif-scrubber-wrap" id="scrubberTrack" onclick="handleTrackClick(event)" title="Drag green ball or click anywhere along track">
+            <div class="notif-track-bg">
+              <div class="notif-track-fill" id="trackFill" style="width: 60%;"></div>
+              <div class="track-ticks-layer">
+                <span class="tick-dot"></span><span class="tick-dot"></span>
+                <span class="tick-dot"></span><span class="tick-dot"></span>
+                <span class="tick-dot"></span><span class="tick-dot"></span>
+                <span class="tick-dot"></span><span class="tick-dot"></span>
+                <span class="tick-dot"></span><span class="tick-dot"></span>
+              </div>
+            </div>
+            <!-- The Green Ball (Draggable Thumb) -->
+            <div class="green-ball-thumb" id="greenBall" style="left: 60%;" title="Drag forward (+) or reverse (-)"></div>
           </div>
+
+          <!-- Inline Stream Selector Pop-Up (Image 3) -->
+          <div class="notif-stream-popup hidden" id="streamPopup">
+            <div class="notif-popup-item active" onclick="selectStream('Media', '🎵')">
+              <span>🎵</span> <span>Media</span>
+            </div>
+            <div class="notif-popup-item" onclick="selectStream('Ringtone', '🔔')">
+              <span>🔔</span> <span>Ringtone</span>
+            </div>
+            <div class="notif-popup-item" onclick="selectStream('Notification', '💬')">
+              <span>💬</span> <span>Notification</span>
+            </div>
+            <div class="notif-popup-item" onclick="selectStream('Alarm', '⏰')">
+              <span>⏰</span> <span>Alarm</span>
+            </div>
+          </div>
+
         </div>
 
       </div>
     </div>
 
+    <!-- Simulator Controls -->
     <div class="stage-controls">
-      <b>Interactive Shade:</b> Click <b>− 10%</b> or <b>+ 10%</b> to adjust volume right here.
+      <div class="control-row">
+        <span>Step Control:</span>
+        <button class="btn-action" onclick="stepVol(-10)">◀ Reverse (-10%)</button>
+        <button class="btn-action" onclick="stepVol(10)">Forward (+10%) ▶</button>
+      </div>
+      <div class="control-row">
+        <span>Stream Selection:</span>
+        <button class="btn-action" onclick="toggleStreamPopup()">Toggle Stream Pop-up</button>
+      </div>
     </div>
 
     <div class="notes-box">
-      <b>Why Option 2 Adds Maximum Value:</b>
+      <b>Implementation of Your Requested Features:</b>
       <ul>
-        <li><b>One-Thumb Shade Control:</b> Step volume up or down in discrete 10% increments without expanding the overlay.</li>
-        <li><b>Instant Mute:</b> Silence media instantly in meetings without unlocking or looking at the screen.</li>
-        <li><b>Full Theme Safety:</b> High contrast buttons styled for both Light and Dark themes.</li>
+        <li><b>The Green Ball:</b> A prominent accent thumb resting on the volume bar. Dragging it forward increases volume; dragging it reverse decreases volume in discrete intervals.</li>
+        <li><b>Discrete Interval Ticks:</b> 10% notches embedded in the track for tactile stepping.</li>
+        <li><b>Stream Picker Pop-Up:</b> Clicking on the stream title area opens an inline menu to choose between Media, Ringtone, Notification, or Alarm without opening the main app.</li>
+        <li><b>Theme Adaptive:</b> Works seamlessly across Light and Dark themes with full WCAG AAA contrast.</li>
       </ul>
     </div>
   </div>
@@ -510,60 +484,83 @@
 </main>
 
 <script>
-  let currentVol = 60;
-  let isMuted = false;
-  let prevVol = 60;
+  let volume = 60;
+  let activeStream = 'Media';
+  let activeIcon = '🎵';
+
+  const trackFill = document.getElementById('trackFill');
+  const greenBall = document.getElementById('greenBall');
+  const volNumText = document.getElementById('volNumText');
+  const activeStreamText = document.getElementById('activeStreamText');
+  const streamIconDisplay = document.getElementById('streamIconDisplay');
+  const streamPopup = document.getElementById('streamPopup');
 
   function setTheme(theme) {
-    const frames = [document.getElementById('frameCurrent'), document.getElementById('frameOpt1'), document.getElementById('frameOpt2')];
+    const frameOld = document.getElementById('frameOld');
+    const frameNew = document.getElementById('frameNew');
     const btnLight = document.getElementById('btnLight');
     const btnDark = document.getElementById('btnDark');
 
-    frames.forEach(f => {
-      f.classList.remove('mode-light', 'mode-dark');
-      f.classList.add(theme === 'dark' ? 'mode-dark' : 'mode-light');
-    });
+    frameOld.className = 'phone-frame mode-' + theme;
+    frameNew.className = 'phone-frame mode-' + theme;
 
-    if (theme === 'dark') {
-      btnDark.classList.add('active');
-      btnLight.classList.remove('active');
-    } else {
-      btnLight.classList.add('active');
-      btnDark.classList.remove('active');
-    }
+    btnLight.classList.toggle('active', theme === 'light');
+    btnDark.classList.toggle('active', theme === 'dark');
+  }
+
+  function setVolume(pct) {
+    volume = Math.max(0, Math.min(100, Math.round(pct / 10) * 10));
+    trackFill.style.width = volume + '%';
+    greenBall.style.left = volume + '%';
+    volNumText.textContent = volume + '%';
   }
 
   function stepVol(delta) {
-    if (isMuted) {
-      isMuted = false;
-      document.getElementById('btnMute').textContent = 'Mute';
-    }
-    currentVol = Math.max(0, Math.min(100, currentVol + delta));
-    updateVisuals();
+    setVolume(volume + delta);
   }
 
-  function toggleMute() {
-    isMuted = !isMuted;
-    const btn = document.getElementById('btnMute');
-    if (isMuted) {
-      prevVol = currentVol;
-      currentVol = 0;
-      btn.textContent = 'Unmute';
-      btn.style.color = '#ef4444';
-    } else {
-      currentVol = prevVol > 0 ? prevVol : 50;
-      btn.textContent = 'Mute';
-      btn.style.color = '';
-    }
-    updateVisuals();
+  function handleTrackClick(e) {
+    const track = document.getElementById('scrubberTrack');
+    const rect = track.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const pct = (clickX / rect.width) * 100;
+    setVolume(pct);
   }
 
-  function updateVisuals() {
-    document.getElementById('volOpt1Text').textContent = currentVol + '%';
-    document.getElementById('volOpt1Fill').style.width = currentVol + '%';
-    document.getElementById('volOpt2Text').textContent = currentVol + '%';
-    document.getElementById('volOpt2Fill').style.width = currentVol + '%';
+  function toggleStreamPopup() {
+    streamPopup.classList.toggle('hidden');
   }
+
+  function selectStream(name, icon) {
+    activeStream = name;
+    activeIcon = icon;
+    activeStreamText.textContent = name;
+    streamIconDisplay.textContent = icon;
+    document.querySelectorAll('.notif-popup-item').forEach(el => {
+      el.classList.toggle('active', el.textContent.includes(name));
+    });
+    streamPopup.classList.add('hidden');
+  }
+
+  // Draggable Green Ball
+  let isDraggingBall = false;
+  greenBall.addEventListener('mousedown', (e) => {
+    isDraggingBall = true;
+    e.stopPropagation();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDraggingBall) return;
+    const track = document.getElementById('scrubberTrack');
+    const rect = track.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const pct = (clickX / rect.width) * 100;
+    setVolume(pct);
+  });
+
+  window.addEventListener('mouseup', () => {
+    isDraggingBall = false;
+  });
 </script>
 </body>
 </html>

@@ -3,21 +3,18 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Volume Manager — Home Screen & Overlay Interaction Preview</title>
+<title>Volume Manager — Vertical Overlay & Handle Interaction (Based on User Annotations)</title>
 <style>
   :root {
     --orange: #ff6b3d;
     --orange-dark: #f4511e;
-    --salmon: #ff7a6b;
+    --orange-glow: rgba(255, 107, 61, 0.45);
+    --green-accent: #10b981;
     --ink: #1f2029;
-    --muted: #69697a;
-    --line: #e2e4ea;
-    --surface: #ffffff;
-    --bg-page: #f0f2f7;
-    --chip-bg: #fafafd;
-    --pill-blue: #3b82f6;
-    --green: #10b981;
-    --red: #ef4444;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --bg-page: #f8fafc;
+    --card-surface: #ffffff;
   }
   * { box-sizing: border-box; }
   body {
@@ -28,7 +25,7 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Page Header */
+  /* Header */
   header {
     background: #fff;
     border-bottom: 1px solid var(--line);
@@ -36,22 +33,22 @@
   }
   .header-wrap { max-width: 1240px; margin: 0 auto; }
   h1 { font-size: 24px; font-weight: 800; margin: 0 0 6px; letter-spacing: -0.4px; }
-  header p { margin: 0; color: var(--muted); font-size: 14px; max-width: 860px; line-height: 1.5; }
-  .badge-bar { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; max-width: 900px; line-height: 1.5; }
+  .badge-bar { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
   .badge {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
-    background: #f1f3f9; color: var(--muted);
+    font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px;
+    background: #f1f5f9; color: #475569;
   }
-  .badge.orange { background: #fff1eb; color: var(--orange-dark); }
-  .badge.blue { background: #ebf5ff; color: var(--pill-blue); }
-  .badge.green { background: #ecfdf5; color: var(--green); }
+  .badge.green { background: #ecfdf5; color: #047857; }
+  .badge.orange { background: #fff7ed; color: #c2410c; }
+  .badge.blue { background: #eff6ff; color: #1d4ed8; }
 
-  /* Main Grid */
+  /* Main Container */
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-    gap: 28px;
+    grid-template-columns: repeat(auto-fit, minmax(370px, 1fr));
+    gap: 32px;
     max-width: 1240px;
     margin: 28px auto 60px;
     padding: 0 20px;
@@ -59,26 +56,25 @@
 
   /* Stage Card */
   .stage-card {
-    background: #fff;
+    background: var(--card-surface);
     border: 1px solid var(--line);
-    border-radius: 22px;
-    padding: 20px;
-    box-shadow: 0 10px 28px rgba(20, 24, 48, 0.05);
+    border-radius: 24px;
+    padding: 22px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
     display: flex;
     flex-direction: column;
   }
   .stage-header {
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f0f1f5;
+    margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9;
   }
   .stage-title { font-size: 16px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 8px; }
   .tag {
     font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
     padding: 3px 8px; border-radius: 6px;
   }
-  .tag.current { background: #fee2e2; color: #b91c1c; }
-  .tag.option-a { background: #eff6ff; color: #1d4ed8; }
-  .tag.option-b { background: #ecfdf5; color: #047857; }
+  .tag.old { background: #fee2e2; color: #991b1b; }
+  .tag.new { background: #ecfdf5; color: #065f46; }
 
   /* Interactive Simulator Phone */
   .phone-frame {
@@ -86,15 +82,15 @@
     width: 320px;
     height: 640px;
     margin: 0 auto;
-    border: 9px solid #1a1a24;
+    border: 9px solid #0f172a;
     border-radius: 40px;
     overflow: hidden;
     background: #0f172a;
-    box-shadow: 0 22px 50px rgba(15, 23, 42, 0.25);
+    box-shadow: 0 24px 55px rgba(15, 23, 42, 0.3);
     user-select: none;
   }
 
-  /* Screen Wallpaper & Status Bar */
+  /* Wallpaper & System Chrome */
   .phone-wallpaper {
     position: absolute; inset: 0;
     background:
@@ -114,9 +110,6 @@
     color: #fff; font-size: 11px; font-weight: 600; z-index: 10;
     text-shadow: 0 1px 3px rgba(0,0,0,0.6);
   }
-  .status-icons { display: flex; gap: 6px; font-size: 10px; }
-
-  /* Mock Launcher Icons */
   .mock-launcher {
     position: absolute; inset: 54px 16px 20px;
     display: flex; flex-direction: column; justify-content: space-between;
@@ -126,7 +119,7 @@
     background: rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 18px; padding: 16px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    border-radius: 18px; padding: 16px; color: #fff;
   }
   .mock-time { font-size: 32px; font-weight: 300; }
   .mock-date { font-size: 12px; opacity: 0.8; }
@@ -147,159 +140,172 @@
     width: 90px; height: 4px; background: rgba(255,255,255,0.6); border-radius: 2px;
   }
 
-  /* Overlay Trigger Handle */
-  .overlay-handle {
-    position: absolute;
-    width: 44px; height: 44px;
-    border-radius: 22px;
-    background: linear-gradient(135deg, #ff7a6b, #f4511e);
-    box-shadow: 0 4px 16px rgba(244, 81, 30, 0.45), 0 0 0 1px rgba(255,255,255,0.25);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    color: #fff; font-size: 16px; cursor: grab; z-index: 30;
-    transition: opacity 0.3s ease, transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.2s;
+  /* ------------------------------------------------------------- */
+  /* 1. OLD HORIZONTAL CHIP (Before)                               */
+  /* ------------------------------------------------------------- */
+  .old-handle {
+    position: absolute; top: 220px; left: 0; width: 44px; height: 44px;
+    border-radius: 22px; background: linear-gradient(135deg, #ff7a6b, #f4511e);
+    color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 15px; z-index: 30; cursor: pointer; box-shadow: 0 4px 14px rgba(244, 81, 30, 0.4);
   }
-  .overlay-handle:active { cursor: grabbing; transform: scale(1.06); }
-  .overlay-handle.idle-dim { opacity: 0.32 !important; }
-  .overlay-handle .sub-icon { font-size: 9px; line-height: 1; margin-top: 1px; font-weight: 800; opacity: 0.9; }
+  .old-horizontal-card {
+    position: absolute; top: 206px; left: 52px; width: 180px;
+    background: #fafafd; border: 1px solid #fff; border-radius: 16px;
+    padding: 12px; z-index: 40; box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+  }
+  .old-empty-tag {
+    display: inline-block; background: #fee2e2; color: #b91c1c; font-size: 9px;
+    font-weight: 800; padding: 1px 4px; border-radius: 4px; margin-left: 4px;
+  }
 
-  /* Option B Long-press Ring */
-  .long-press-ring {
-    position: absolute; inset: -4px; border-radius: 50%;
-    border: 2px dashed #fff; opacity: 0; pointer-events: none;
-    transition: opacity 0.2s, transform 0.2s;
-  }
-  .overlay-handle.reposition-mode {
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.7);
-  }
-  .overlay-handle.reposition-mode .long-press-ring { opacity: 1; animation: spinRing 4s linear infinite; }
-  @keyframes spinRing { to { transform: rotate(360deg); } }
+  /* ------------------------------------------------------------- */
+  /* 2. NEW REDESIGNED VERTICAL OVERLAY (After - User Sketch)     */
+  /* ------------------------------------------------------------- */
 
-  /* Floating Volume HUD Tooltip (New Option A/B) */
-  .volume-hud {
-    position: absolute;
-    height: 38px;
-    background: rgba(22, 22, 34, 0.94);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 19px;
-    padding: 0 14px 0 10px;
+  /* Slimmer, Filled Vertical Pill Handle */
+  .new-slim-pill {
+    position: absolute; top: 210px; left: 0;
+    width: 28px; height: 64px;
+    border-radius: 0 14px 14px 0;
+    background: linear-gradient(180deg, #ff7a6b 0%, #f4511e 100%);
+    box-shadow: 2px 4px 16px var(--orange-glow), 0 0 0 1px rgba(255,255,255,0.25) inset;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 6px 0;
+    color: #fff; cursor: grab; z-index: 35;
+    transition: transform 0.15s ease, background 0.2s, opacity 0.3s;
+  }
+  .new-slim-pill:active { cursor: grabbing; transform: scale(1.05); }
+  .new-slim-pill .pill-arrow { font-size: 9px; font-weight: 900; opacity: 0.9; }
+  .new-slim-pill .pill-icon { font-size: 13px; line-height: 1; }
+  .new-slim-pill.reposition-mode {
+    background: linear-gradient(180deg, #3b82f6, #1d4ed8) !important;
+    box-shadow: 2px 4px 16px rgba(59, 130, 246, 0.6) !important;
+  }
+
+  /* Rotated Vertical Volume Slider (Opened beside the pill) */
+  .vertical-slider-panel {
+    position: absolute; top: 150px; left: 36px;
+    width: 52px; height: 190px;
+    background: rgba(250, 250, 253, 0.96);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    border: 1.5px solid #ffffff;
+    border-radius: 26px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 10px 6px;
+    z-index: 45;
+    transition: opacity 0.2s cubic-bezier(0.2, 0.9, 0.3, 1), transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  .vertical-slider-panel.hidden {
+    opacity: 0; pointer-events: none; transform: translateX(-12px) scale(0.92);
+  }
+
+  /* Stream Icon at Top of Vertical Slider */
+  .v-stream-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #f1f3f9; display: grid; place-items: center;
+    font-size: 16px; cursor: pointer; transition: background 0.15s, transform 0.1s;
+  }
+  .v-stream-btn:hover { background: #e2e8f0; transform: scale(1.05); }
+  .v-stream-btn:active { transform: scale(0.95); }
+
+  /* Vertical Scrubbing Track */
+  .v-track-container {
+    position: relative;
+    width: 32px; height: 100px;
+    background: #e2e8f0; border-radius: 16px;
+    overflow: hidden; cursor: pointer;
+  }
+  .v-track-fill {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(180deg, #ff7a6b, #f4511e);
+    border-radius: 16px;
+    transition: height 0.08s ease-out;
+  }
+  .v-step-notch {
+    position: absolute; left: 0; right: 0; height: 1px;
+    background: rgba(255,255,255,0.4); pointer-events: none;
+  }
+
+  /* Percentage Label at Bottom */
+  .v-pct-label {
+    font-size: 11px; font-weight: 800; color: #1e293b;
+    margin-top: 4px;
+  }
+
+  /* Small Stream Selector Pop-Up (When clicking the speaker button) */
+  .stream-popup-menu {
+    position: absolute; top: 140px; left: 96px;
+    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+    padding: 6px; z-index: 50; width: 130px;
+    transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  .stream-popup-menu.hidden {
+    opacity: 0; pointer-events: none; transform: scale(0.9) translateY(-6px);
+  }
+  .stream-popup-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 10px; font-size: 12px; font-weight: 700;
+    color: #334155; cursor: pointer; transition: background 0.15s;
+  }
+  .stream-popup-item:hover { background: #f1f5f9; }
+  .stream-popup-item.active { background: #fff7ed; color: #ea580c; }
+
+  /* Live HUD Capsule during handle vertical scrub */
+  .floating-hud {
+    position: absolute; top: 222px; left: 38px;
+    height: 38px; background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 19px; padding: 0 14px 0 10px;
     display: flex; align-items: center; gap: 8px;
     color: #fff; font-size: 12px; font-weight: 700;
     box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    z-index: 35;
-    pointer-events: none;
-    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 40; pointer-events: none;
+    transition: opacity 0.15s, transform 0.15s;
   }
-  .volume-hud .hud-icon {
-    width: 24px; height: 24px; border-radius: 50%;
-    background: var(--orange); display: grid; place-items: center; font-size: 12px;
-  }
-  .volume-hud .hud-bars {
-    width: 48px; height: 6px; background: rgba(255,255,255,0.2);
-    border-radius: 3px; overflow: hidden; position: relative;
-  }
-  .volume-hud .hud-fill {
-    height: 100%; background: var(--orange); border-radius: 3px;
-    transition: width 0.08s ease-out;
+  .floating-hud.hidden { opacity: 0; transform: scale(0.85); }
+  .hud-badge {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--orange);
+    display: grid; place-items: center; font-size: 12px;
   }
 
-  /* Compact Volume Chip */
-  .volume-chip {
-    position: absolute;
-    width: 176px;
-    background: #fafafd;
-    border: 1px solid #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 12px 30px rgba(10, 15, 35, 0.28);
-    padding: 10px;
-    z-index: 40;
-    font-size: 11px;
-    color: #2c2c3a;
-    transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.25s ease;
-  }
-  .chip-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 6px;
-  }
-  .chip-stream {
-    font-size: 10px; font-weight: 800; color: #4b4b5b; cursor: pointer;
-    display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px;
-  }
-  .chip-stream:hover { background: #f0f0f5; }
-  .chip-percent { font-size: 11px; font-weight: 800; color: #2c2c3a; }
-  .chip-options {
-    display: flex; gap: 3px; margin: 6px 0; background: #f2f2f7; padding: 3px; border-radius: 8px;
-  }
-  .stream-opt {
-    flex: 1; text-align: center; font-size: 9px; font-weight: 700;
-    padding: 4px 0; border-radius: 6px; color: var(--orange); cursor: pointer;
-  }
-  .stream-opt.active { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-  .chip-seek-track {
-    width: 100%; height: 6px; background: #e5e5ed; border-radius: 3px;
-    position: relative; margin: 8px 0 4px; cursor: pointer;
-  }
-  .chip-seek-fill {
-    height: 100%; background: linear-gradient(90deg, #ff7a6b, #f4511e); border-radius: 3px;
-  }
-  .chip-seek-thumb {
-    position: absolute; top: -5px; width: 16px; height: 16px; border-radius: 50%;
-    background: #fff; border: 2px solid #ff6b3d; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    transform: translateX(-50%);
-  }
-  .chip-close-btn {
-    display: inline-block; cursor: pointer; color: #9494a5; font-size: 11px;
-    padding: 0 4px; line-height: 1;
-  }
-  .chip-close-btn:hover { color: var(--red); }
-
-  /* Gesture Exclusion Zone Visualizer */
-  .gesture-exclusion-box {
-    position: absolute; left: 0; width: 44px; height: 80px;
-    border: 1px dashed rgba(16, 185, 129, 0.8);
-    background: rgba(16, 185, 129, 0.12);
-    border-radius: 8px; pointer-events: none; z-index: 25;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 8px; color: #10b981; font-weight: 800; text-align: center;
-  }
-
-  /* Control Panel Below Mock */
+  /* Controls & Notes */
   .stage-controls {
-    margin-top: 18px; padding-top: 14px; border-top: 1px solid #f0f1f5;
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid #f1f5f9;
   }
   .control-row {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 10px; font-size: 12px; color: var(--muted);
   }
   .btn-action {
-    background: #f1f3f9; border: 1px solid var(--line); border-radius: 8px;
+    background: #f1f5f9; border: 1px solid var(--line); border-radius: 8px;
     padding: 6px 12px; font-size: 12px; font-weight: 700; color: var(--ink);
     cursor: pointer; transition: all 0.15s;
   }
-  .btn-action:hover { background: #e6e9f2; }
-  .btn-action.active { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+  .btn-action:hover { background: #e2e8f0; }
+  .btn-action.active { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
 
-  /* Explanation Notes */
   .notes-box {
-    margin-top: 16px; background: #fbfbfd; border: 1px solid #ebebf0;
-    border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.5; color: #4b4b5b;
+    margin-top: 16px; background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 14px 16px; font-size: 12px; line-height: 1.5; color: #334155;
   }
-  .notes-box b { color: #1f2029; }
+  .notes-box b { color: #0f172a; }
   .notes-box ul { margin: 6px 0 0; padding-left: 18px; }
-  .notes-box li { margin-bottom: 4px; }
+  .notes-box li { margin-bottom: 5px; }
 </style>
 </head>
 <body>
 
 <header>
   <div class="header-wrap">
-    <h1>Volume Manager — Home Screen & In-App Overlay Previews</h1>
-    <p>Visualizing the floating trigger pill, gesture conflicts, volume scrubbing, and overlay chip behavior on the Realme 6. Compare the current implementation against proposed refinements.</p>
+    <h1>Volume Manager — Vertical Overlay & Handle Interaction</h1>
+    <p>Redesigned strictly according to your handwritten annotations: rotating the slider to vertical, slimming down the edge pill into a filled squircle, adding up/down direct volume scrub, and adding a stream popup menu.</p>
     <div class="badge-bar">
-      <span class="badge orange">● Orange = Floating Edge Pill</span>
-      <span class="badge blue">● Blue = Reposition State (Option B)</span>
-      <span class="badge green">● Green Dashed = System Gesture Exclusion Rect</span>
+      <span class="badge green">✓ Rotated Vertical (Drag Up = Volume +, Drag Down = Volume −)</span>
+      <span class="badge orange">✓ Slimmer Filled Pill (Docked Snug to Screen Edge)</span>
+      <span class="badge blue">✓ Direct Touch Drag + Hold to Reposition Mode</span>
     </div>
   </div>
 </header>
@@ -307,19 +313,19 @@
 <main class="grid-container">
 
   <!-- ============================================================== -->
-  <!-- 1. CURRENT IMPLEMENTATION (Commit 4d66ec0)                      -->
+  <!-- 1. PREVIOUS HORIZONTAL LAYOUT (What was marked as 'Empty')    -->
   <!-- ============================================================== -->
   <div class="stage-card">
     <div class="stage-header">
-      <h2 class="stage-title">Current Implementation <span class="tag current">As-Is (Commit 4d66ec0)</span></h2>
+      <h2 class="stage-title">Before (Previous Redesign) <span class="tag old">Horizontal Wasted Space</span></h2>
     </div>
 
-    <div class="phone-frame" id="phoneCurrent">
+    <div class="phone-frame">
       <div class="phone-wallpaper"></div>
       <div class="punch-hole"></div>
       <div class="status-bar">
         <span>17:00</span>
-        <div class="status-icons"><span>LTE</span><span>▮ 82%</span></div>
+        <div><span>LTE</span> <span>82%</span></div>
       </div>
 
       <div class="mock-launcher">
@@ -336,62 +342,49 @@
       </div>
       <div class="gesture-bar"></div>
 
-      <!-- Handle -->
-      <div class="overlay-handle" id="handleCurrent" style="top: 220px; left: 0px;" title="Drag up/down for volume; pull horizontally to move; tap to open chip">
+      <!-- Old Round Handle -->
+      <div class="old-handle" title="Circular 44dp handle">
         <span>◁))</span>
-        <span class="sub-icon">↕</span>
       </div>
 
-      <!-- Chip (Hidden by default, toggled via tap) -->
-      <div class="volume-chip" id="chipCurrent" style="top: 210px; left: 52px; display: none;">
-        <div class="chip-header">
-          <span class="chip-stream" id="streamCurrent">Media ▾</span>
-          <span class="chip-percent" id="pctCurrent">50%</span>
+      <!-- Old Horizontal Card -->
+      <div class="old-horizontal-card">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #475569;">
+          <span>Media ▾ <span class="old-empty-tag">EMPTY AREA</span></span>
+          <span style="color: #0f172a;">50%</span>
         </div>
-        <div class="chip-seek-track" id="trackCurrent">
-          <div class="chip-seek-fill" id="fillCurrent" style="width: 50%;"></div>
-          <div class="chip-seek-thumb" id="thumbCurrent" style="left: 50%;"></div>
+        <div style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; margin: 10px 0 4px; position: relative;">
+          <div style="width: 50%; height: 100%; background: #ff6b3d; border-radius: 3px;"></div>
+          <div style="position: absolute; top: -5px; left: 50%; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #ff6b3d; transform: translateX(-50%);"></div>
         </div>
-      </div>
-    </div>
-
-    <div class="stage-controls">
-      <div class="control-row">
-        <span>Chip State:</span>
-        <button class="btn-action" onclick="toggleChip('Current')">Toggle Chip</button>
-      </div>
-      <div class="control-row">
-        <span>Interactive Hint:</span>
-        <span style="font-weight: 600; color: #b91c1c;">Tap pill to open chip</span>
       </div>
     </div>
 
     <div class="notes-box">
-      <b>Identified Traps in Current Version:</b>
+      <b>Why You Rejected This:</b>
       <ul>
-        <li><b>Silent Volume Jumps:</b> Vertical drag changes volume without any HUD or tooltip showing the new level.</li>
-        <li><b>Gesture Ambiguity:</b> Dragging vertically along the edge changes volume instead of repositioning the handle.</li>
-        <li><b>No Dismiss Path:</b> Chip has no close button, no outside-tap dismiss, and never auto-closes.</li>
-        <li><b>Edge Navigation Clash:</b> Swiping the pill triggers Android's "Back" arrow gesture.</li>
+        <li><b>Horizontal Wasted Space:</b> You marked the horizontal space as "Empty" because natural volume adjustments on phones are vertical (up/down).</li>
+        <li><b>Clunky Handle:</b> The 44dp circle stood out too far from the screen edge.</li>
+        <li><b>Conflicting Directions:</b> Scrubbing horizontally while hardware rockers are vertical felt unnatural.</li>
       </ul>
     </div>
   </div>
 
 
   <!-- ============================================================== -->
-  <!-- 2. OPTION A: REFINED CURRENT + FLOATING HUD + IDLE FADE        -->
+  <!-- 2. NEW VERTICAL SLIDER & SLIM PIL (Your Exact Vision)         -->
   <!-- ============================================================== -->
   <div class="stage-card">
     <div class="stage-header">
-      <h2 class="stage-title">Option A: Refined with HUD <span class="tag option-a">Recommended</span></h2>
+      <h2 class="stage-title">After (New Vertical Concept) <span class="tag new">User Vision</span></h2>
     </div>
 
-    <div class="phone-frame" id="phoneOptionA">
+    <div class="phone-frame" id="phoneNew">
       <div class="phone-wallpaper"></div>
       <div class="punch-hole"></div>
       <div class="status-bar">
         <span>17:00</span>
-        <div class="status-icons"><span>LTE</span><span>▮ 82%</span></div>
+        <div><span>LTE</span> <span>82%</span></div>
       </div>
 
       <div class="mock-launcher">
@@ -408,146 +401,88 @@
       </div>
       <div class="gesture-bar"></div>
 
-      <!-- Gesture Exclusion Zone Box Visualizer -->
-      <div class="gesture-exclusion-box" style="top: 202px; left: 0px;" title="Android 10+ setSystemGestureExclusionRects prevents accidental Back gesture">
-        NO BACK<br/>SWIPE
+      <!-- New Slim Filled Pill (Docked Snug to Edge) -->
+      <div class="new-slim-pill" id="slimPill" title="Tap: toggle vertical slider. Drag ↕: change volume. Long-press: Move anywhere.">
+        <span class="pill-arrow">▲</span>
+        <span class="pill-icon" id="pillIcon">🔉</span>
+        <span class="pill-arrow">▼</span>
       </div>
 
-      <!-- Handle with Idle Dimming -->
-      <div class="overlay-handle" id="handleOptionA" style="top: 220px; left: 0px;" title="Tap to toggle chip; drag ↕ for volume with HUD">
-        <span>◁))</span>
-        <span class="sub-icon">↕</span>
+      <!-- Transient Floating HUD Capsule (During Drag) -->
+      <div class="floating-hud hidden" id="liveHud">
+        <div class="hud-badge">🔉</div>
+        <span id="liveHudText">Media: 60%</span>
       </div>
 
-      <!-- Floating HUD Tooltip -->
-      <div class="volume-hud" id="hudOptionA" style="top: 223px; left: 54px; opacity: 0; transform: scale(0.9);">
-        <div class="hud-icon">🔉</div>
-        <span>Media: <span id="hudPctA">60%</span></span>
-        <div class="hud-bars"><div class="hud-fill" id="hudFillA" style="width: 60%;"></div></div>
+      <!-- Rotated Vertical Volume Slider Panel -->
+      <div class="vertical-slider-panel" id="vPanel">
+        <!-- Top Stream Icon Button (Tapping opens the stream pop-up) -->
+        <div class="v-stream-btn" id="btnStreamSelect" onclick="toggleStreamPopup()" title="Click to choose Media, Ring, Notification">
+          <span id="currentStreamIcon">🎵</span>
+        </div>
+
+        <!-- Vertical Volume Scrub Track -->
+        <div class="v-track-container" id="vTrack" onclick="handleTrackClick(event)" title="Click or drag vertically: UP = louder, DOWN = quieter">
+          <div class="v-track-fill" id="vFill" style="height: 60%;"></div>
+          <!-- 10% Step Notches -->
+          <div class="v-step-notch" style="bottom: 10%;"></div>
+          <div class="v-step-notch" style="bottom: 20%;"></div>
+          <div class="v-step-notch" style="bottom: 30%;"></div>
+          <div class="v-step-notch" style="bottom: 40%;"></div>
+          <div class="v-step-notch" style="bottom: 50%;"></div>
+          <div class="v-step-notch" style="bottom: 60%;"></div>
+          <div class="v-step-notch" style="bottom: 70%;"></div>
+          <div class="v-step-notch" style="bottom: 80%;"></div>
+          <div class="v-step-notch" style="bottom: 90%;"></div>
+        </div>
+
+        <!-- Level Percentage -->
+        <div class="v-pct-label" id="vPct">60%</div>
       </div>
 
-      <!-- Chip with Close Button & Outside Tap Dismiss -->
-      <div class="volume-chip" id="chipOptionA" style="top: 210px; left: 52px; display: none;">
-        <div class="chip-header">
-          <span class="chip-stream" id="streamA" onclick="toggleStreamOptions('A')">Media ▾</span>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span class="chip-percent" id="pctA">60%</span>
-            <span class="chip-close-btn" onclick="closeChip('A')" title="Close">✕</span>
-          </div>
+      <!-- Stream Selector Pop-Up Menu -->
+      <div class="stream-popup-menu hidden" id="streamPopup">
+        <div class="stream-popup-item active" onclick="selectStream('Media', '🎵')">
+          <span>🎵</span> <span>Media</span>
         </div>
-        <div class="chip-options" id="optsA" style="display: none;">
-          <span class="stream-opt active">Media</span>
-          <span class="stream-opt">Ring</span>
-          <span class="stream-opt">Alarm</span>
-          <span class="stream-opt">Notify</span>
+        <div class="stream-popup-item" onclick="selectStream('Ringtone', '🔔')">
+          <span>🔔</span> <span>Ringtone</span>
         </div>
-        <div class="chip-seek-track" id="trackA">
-          <div class="chip-seek-fill" id="fillA" style="width: 60%;"></div>
-          <div class="chip-seek-thumb" id="thumbA" style="left: 60%;"></div>
+        <div class="stream-popup-item" onclick="selectStream('Notification', '💬')">
+          <span>💬</span> <span>Notify</span>
+        </div>
+        <div class="stream-popup-item" onclick="selectStream('Alarm', '⏰')">
+          <span>⏰</span> <span>Alarm</span>
         </div>
       </div>
+
     </div>
 
+    <!-- Simulator Controls -->
     <div class="stage-controls">
       <div class="control-row">
-        <span>Interactive Scrub:</span>
-        <input type="range" min="0" max="100" value="60" step="10" oninput="scrubVolumeA(this.value)" style="width: 140px;" />
+        <span>Volume Scrub:</span>
+        <button class="btn-action" onclick="stepVolume(10)">▲ Up (+10%)</button>
+        <button class="btn-action" onclick="stepVolume(-10)">▼ Down (-10%)</button>
       </div>
       <div class="control-row">
-        <span>Simulate Inactivity:</span>
-        <button class="btn-action" id="btnIdleA" onclick="toggleIdle('A')">Toggle Idle Fade (30%)</button>
+        <span>Panel State:</span>
+        <button class="btn-action" onclick="toggleVerticalPanel()">Toggle Vertical Slider</button>
+      </div>
+      <div class="control-row">
+        <span>Hold to Move Pill:</span>
+        <button class="btn-action" id="btnMoveMode" onclick="toggleMoveMode()">Simulate Long-Press (Move)</button>
       </div>
     </div>
 
     <div class="notes-box">
-      <b>Why Option A Solves the Problems:</b>
+      <b>Key Architectural & UX Enhancements:</b>
       <ul>
-        <li><b>Instant Visual HUD:</b> Vertical drag pops up a capsule tooltip showing stream name and percentage.</li>
-        <li><b>Gesture Exclusion:</b> Excludes Android's edge gesture zone so dragging never triggers Back.</li>
-        <li><b>Smart Auto-Dismiss:</b> Tapping outside or idling for 4s collapses the chip automatically.</li>
-        <li><b>Idle Fade:</b> Smoothly dims to 30% alpha when untouched, eliminating screen distraction.</li>
-      </ul>
-    </div>
-  </div>
-
-
-  <!-- ============================================================== -->
-  <!-- 3. OPTION B: LONG-PRESS REPOSITION MODE                         -->
-  <!-- ============================================================== -->
-  <div class="stage-card">
-    <div class="stage-header">
-      <h2 class="stage-title">Option B: Long-Press Reposition <span class="tag option-b">Distinct Modes</span></h2>
-    </div>
-
-    <div class="phone-frame" id="phoneOptionB">
-      <div class="phone-wallpaper"></div>
-      <div class="punch-hole"></div>
-      <div class="status-bar">
-        <span>17:00</span>
-        <div class="status-icons"><span>LTE</span><span>▮ 82%</span></div>
-      </div>
-
-      <div class="mock-launcher">
-        <div class="mock-widget">
-          <div class="mock-time">17:00</div>
-          <div class="mock-date">Wednesday, Nov 18</div>
-        </div>
-        <div class="mock-grid">
-          <div class="mock-app"><div class="mock-app-icon">📞</div>Phone</div>
-          <div class="mock-app"><div class="mock-app-icon">💬</div>Chat</div>
-          <div class="mock-app"><div class="mock-app-icon">🌐</div>Web</div>
-          <div class="mock-app"><div class="mock-app-icon">🎵</div>Music</div>
-        </div>
-      </div>
-      <div class="gesture-bar"></div>
-
-      <!-- Handle with Mode Switch -->
-      <div class="overlay-handle" id="handleOptionB" style="top: 220px; left: 0px;" title="Short swipe = volume; Long press (300ms) = move handle freely">
-        <div class="long-press-ring"></div>
-        <span id="handleIconB">◁))</span>
-        <span class="sub-icon" id="handleSubB">↕</span>
-      </div>
-
-      <!-- Floating HUD -->
-      <div class="volume-hud" id="hudOptionB" style="top: 223px; left: 54px; opacity: 0; transform: scale(0.9);">
-        <div class="hud-icon">🔉</div>
-        <span>Media: <span id="hudPctB">70%</span></span>
-        <div class="hud-bars"><div class="hud-fill" id="hudFillB" style="width: 70%;"></div></div>
-      </div>
-
-      <!-- Chip -->
-      <div class="volume-chip" id="chipOptionB" style="top: 210px; left: 52px; display: none;">
-        <div class="chip-header">
-          <span class="chip-stream">Media ▾</span>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span class="chip-percent">70%</span>
-            <span class="chip-close-btn" onclick="closeChip('B')">✕</span>
-          </div>
-        </div>
-        <div class="chip-seek-track">
-          <div class="chip-seek-fill" style="width: 70%;"></div>
-          <div class="chip-seek-thumb" style="left: 70%;"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="stage-controls">
-      <div class="control-row">
-        <span>Simulate Long-Press (300ms):</span>
-        <button class="btn-action" id="btnModeB" onclick="toggleRepositionModeB()">Toggle Reposition Mode</button>
-      </div>
-      <div class="control-row">
-        <span>Status:</span>
-        <span id="modeStatusB" style="font-weight: 700; color: #4b4b5b;">Standard (Volume Scrub)</span>
-      </div>
-    </div>
-
-    <div class="notes-box">
-      <b>How Option B Operates:</b>
-      <ul>
-        <li><b>Zero Gesture Ambiguity:</b> Normal vertical drag strictly scrubs volume; cannot accidentally move the pill.</li>
-        <li><b>Long-Press Unlock:</b> Holding for 300ms pulses the pill blue and enables free 2D dragging anywhere along edges.</li>
-        <li><b>Haptic Confirmation:</b> Haptic tick confirms when reposition mode engages and disengages.</li>
+        <li><b>Rotated Vertical Layout:</b> Completely removes the horizontal "Empty" space. Matches iOS and modern Android volume sliders.</li>
+        <li><b>Drag Up = Volume +, Drag Down = Volume −:</b> Direct tactile correlation with the phone's physical volume rocker.</li>
+        <li><b>Slimmer Filled Pill:</b> Takes only 28dp of horizontal edge space, resting flush with the screen border.</li>
+        <li><b>Compact Stream Pop-Up:</b> Clicking the top icon opens a small floating menu to choose between Media, Ringtone, Notification, or Alarm.</li>
+        <li><b>Move / Reposition Mode:</b> Holding the pill switches it to blue, letting you drag it anywhere on screen.</li>
       </ul>
     </div>
   </div>
@@ -555,85 +490,114 @@
 </main>
 
 <script>
-  // Current Chip Toggle
-  function toggleChip(id) {
-    const chip = document.getElementById('chip' + id);
-    chip.style.display = chip.style.display === 'none' ? 'block' : 'none';
-  }
-  function closeChip(id) {
-    document.getElementById('chip' + id).style.display = 'none';
-  }
+  let volume = 60;
+  let activeStream = 'Media';
+  let activeIcon = '🎵';
+  let isMoveMode = false;
+  let hudTimeout;
 
-  // Handle click to toggle chip
-  document.getElementById('handleCurrent').addEventListener('click', () => toggleChip('Current'));
-  document.getElementById('handleOptionA').addEventListener('click', () => toggleChip('OptionA'));
-  document.getElementById('handleOptionB').addEventListener('click', () => toggleChip('OptionB'));
+  const slimPill = document.getElementById('slimPill');
+  const vPanel = document.getElementById('vPanel');
+  const vFill = document.getElementById('vFill');
+  const vPct = document.getElementById('vPct');
+  const streamPopup = document.getElementById('streamPopup');
+  const liveHud = document.getElementById('liveHud');
+  const liveHudText = document.getElementById('liveHudText');
+  const currentStreamIcon = document.getElementById('currentStreamIcon');
+  const btnMoveMode = document.getElementById('btnMoveMode');
 
-  // Option A Volume Scrub with HUD
-  let hudTimeoutA;
-  function scrubVolumeA(val) {
-    const hud = document.getElementById('hudOptionA');
-    const pct = document.getElementById('hudPctA');
-    const fill = document.getElementById('hudFillA');
-    const chipPct = document.getElementById('pctA');
-    const chipFill = document.getElementById('fillA');
-    const chipThumb = document.getElementById('thumbA');
+  // Toggle Vertical Slider on Pill Click
+  slimPill.addEventListener('click', (e) => {
+    if (isMoveMode) return;
+    toggleVerticalPanel();
+  });
 
-    pct.textContent = val + '%';
-    fill.style.width = val + '%';
-    chipPct.textContent = val + '%';
-    chipFill.style.width = val + '%';
-    chipThumb.style.left = val + '%';
-
-    hud.style.opacity = '1';
-    hud.style.transform = 'scale(1)';
-    clearTimeout(hudTimeoutA);
-    hudTimeoutA = setTimeout(() => {
-      hud.style.opacity = '0';
-      hud.style.transform = 'scale(0.9)';
-    }, 1500);
-  }
-
-  // Option A Stream Options
-  function toggleStreamOptions(id) {
-    const opts = document.getElementById('opts' + id);
-    opts.style.display = opts.style.display === 'none' ? 'flex' : 'none';
-  }
-
-  // Idle Fade Simulation
-  function toggleIdle(id) {
-    const handle = document.getElementById('handleOption' + id);
-    const btn = document.getElementById('btnIdle' + id);
-    handle.classList.toggle('idle-dim');
-    btn.classList.toggle('active');
-  }
-
-  // Option B Reposition Mode Toggle
-  let isRepositionB = false;
-  function toggleRepositionModeB() {
-    isRepositionB = !isRepositionB;
-    const handle = document.getElementById('handleOptionB');
-    const status = document.getElementById('modeStatusB');
-    const icon = document.getElementById('handleIconB');
-    const sub = document.getElementById('handleSubB');
-    const btn = document.getElementById('btnModeB');
-
-    if (isRepositionB) {
-      handle.classList.add('reposition-mode');
-      icon.textContent = '✥';
-      sub.textContent = 'MOVE';
-      status.textContent = 'Repositioning (Free Move)';
-      status.style.color = '#2563eb';
-      btn.classList.add('active');
-    } else {
-      handle.classList.remove('reposition-mode');
-      icon.textContent = '◁))';
-      sub.textContent = '↕';
-      status.textContent = 'Standard (Volume Scrub)';
-      status.style.color = '#4b4b5b';
-      btn.classList.remove('active');
+  function toggleVerticalPanel() {
+    vPanel.classList.toggle('hidden');
+    if (vPanel.classList.contains('hidden')) {
+      streamPopup.classList.add('hidden');
     }
   }
+
+  function toggleStreamPopup() {
+    streamPopup.classList.toggle('hidden');
+  }
+
+  function selectStream(name, icon) {
+    activeStream = name;
+    activeIcon = icon;
+    currentStreamIcon.textContent = icon;
+    document.querySelectorAll('.stream-popup-item').forEach(el => {
+      el.classList.toggle('active', el.textContent.includes(name));
+    });
+    streamPopup.classList.add('hidden');
+    showHud();
+  }
+
+  function setVolume(newVol) {
+    volume = Math.max(0, Math.min(100, Math.round(newVol / 10) * 10));
+    vFill.style.height = volume + '%';
+    vPct.textContent = volume + '%';
+    showHud();
+  }
+
+  function stepVolume(delta) {
+    setVolume(volume + delta);
+  }
+
+  function showHud() {
+    liveHudText.textContent = activeStream + ': ' + volume + '%';
+    liveHud.classList.remove('hidden');
+    clearTimeout(hudTimeout);
+    hudTimeout = setTimeout(() => {
+      liveHud.classList.add('hidden');
+    }, 1400);
+  }
+
+  function handleTrackClick(e) {
+    const track = document.getElementById('vTrack');
+    const rect = track.getBoundingClientRect();
+    const clickY = e.clientY - rect.top;
+    const height = rect.height;
+    const pct = Math.max(0, Math.min(100, (1 - clickY / height) * 100));
+    setVolume(pct);
+  }
+
+  function toggleMoveMode() {
+    isMoveMode = !isMoveMode;
+    slimPill.classList.toggle('reposition-mode', isMoveMode);
+    btnMoveMode.classList.toggle('active', isMoveMode);
+    if (isMoveMode) {
+      slimPill.title = "Reposition mode active! Drag anywhere on screen";
+      btnMoveMode.textContent = "Exit Move Mode";
+    } else {
+      slimPill.title = "Tap: toggle vertical slider. Drag ↕: change volume.";
+      btnMoveMode.textContent = "Simulate Long-Press (Move)";
+    }
+  }
+
+  // Handle Drag Simulator on the Pill
+  let startY = 0;
+  let startVol = 60;
+  let isDraggingPill = false;
+
+  slimPill.addEventListener('mousedown', (e) => {
+    if (isMoveMode) return;
+    isDraggingPill = true;
+    startY = e.clientY;
+    startVol = volume;
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDraggingPill) return;
+    const dy = startY - e.clientY; // up is positive
+    const steps = Math.round(dy / 12);
+    setVolume(startVol + steps * 10);
+  });
+
+  window.addEventListener('mouseup', () => {
+    isDraggingPill = false;
+  });
 </script>
 </body>
 </html>
