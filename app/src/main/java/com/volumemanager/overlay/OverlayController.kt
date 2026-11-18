@@ -1,6 +1,5 @@
 package com.volumemanager.overlay
 
-import android.animation.DecelerateInterpolator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
@@ -17,6 +16,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageButton
 import com.google.android.material.slider.Slider
 import com.volumemanager.R
