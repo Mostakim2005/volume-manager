@@ -156,65 +156,70 @@
   }
   .quick-tile span { font-size: 9px; font-weight: 700; }
 
-  /* Notification Card Base */
+  /* Notification Card Base - Takes as little space as possible */
   .notif-card {
-    border-radius: 18px;
-    padding: 13px 15px;
-    margin-bottom: 12px;
+    border-radius: 16px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
   .notif-meta {
-    display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; margin-bottom: 4px;
   }
   .notif-app-icon {
-    width: 16px; height: 16px; border-radius: 4px;
+    width: 15px; height: 15px; border-radius: 4px;
     background: var(--orange); color: #fff; display: grid; place-items: center;
-    font-size: 9px; font-weight: 800;
+    font-size: 8px; font-weight: 800;
   }
-  .notif-app-name { font-size: 11px; font-weight: 700; flex: 1; }
-  .notif-time { font-size: 10px; color: var(--muted); }
+  .notif-app-name { font-size: 10px; font-weight: 700; margin-left: 6px; text-align: left; flex: 1; }
+  .notif-time { font-size: 9px; color: var(--muted); }
 
   /* ------------------------------------------------------------- */
   /* NEW NOTIFICATION: DRAGGABLE BALL + POPUP (Image 2 & 3)        */
   /* ------------------------------------------------------------- */
 
-  /* Clickable Stream Header Area (Image 3 annotated green circle) */
+  /* Clickable Stream Header Area - Perfectly Centered in Middle */
   .notif-stream-header {
-    display: inline-flex; align-items: center; gap: 6px;
-    cursor: pointer; padding: 3px 8px; margin-left: -4px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    cursor: pointer; padding: 2px 8px; margin: 0 auto 2px;
     border-radius: 8px; transition: background 0.15s;
   }
   .phone-frame.mode-light .notif-stream-header:hover { background: #e2e8f0; }
   .phone-frame.mode-dark .notif-stream-header:hover { background: #232f48; }
 
   .notif-speaker-icon {
-    width: 22px; height: 22px; border-radius: 50%;
+    width: 20px; height: 20px; border-radius: 50%;
     background: #ffedd5; color: #ea580c; display: grid; place-items: center;
-    font-size: 11px; flex-shrink: 0;
+    font-size: 10px; flex-shrink: 0;
   }
   .mode-dark .notif-speaker-icon {
     background: rgba(255, 107, 61, 0.2); color: #ff7a6b;
   }
 
   .notif-title-text {
-    font-size: 13px; font-weight: 800; line-height: 1.2;
+    font-size: 12px; font-weight: 800; line-height: 1.2; text-align: center;
   }
   .mode-light .notif-title-text { color: #0f172a; }
   .mode-dark .notif-title-text { color: #f8fafc; }
 
   .stream-caret {
-    font-size: 10px; color: #94a3b8; transition: transform 0.2s;
+    font-size: 9px; color: #94a3b8; transition: transform 0.2s;
   }
 
   /* Track with Green Ball & Discrete Step Ticks (Image 2) */
   .notif-scrubber-wrap {
     position: relative;
-    width: 100%; height: 26px;
+    width: 100%; height: 22px;
     display: flex; align-items: center;
-    margin-top: 6px; cursor: pointer;
+    margin-top: 2px; cursor: pointer;
   }
   .notif-track-bg {
-    width: 100%; height: 8px; border-radius: 4px;
+    width: 100%; height: 7px; border-radius: 4px;
     position: relative; overflow: hidden;
   }
   .notif-track-fill {
@@ -232,9 +237,9 @@
   /* The Green Ball (User Sketch Image 2) */
   .green-ball-thumb {
     position: absolute; top: 50%;
-    width: 18px; height: 18px; border-radius: 50%;
+    width: 17px; height: 17px; border-radius: 50%;
     background: var(--green-thumb);
-    border: 2.5px solid #ffffff;
+    border: 2px solid #ffffff;
     box-shadow: 0 2px 8px var(--green-glow), 0 1px 3px rgba(0,0,0,0.3);
     transform: translate(-50%, -50%);
     cursor: grab; z-index: 5;
@@ -245,9 +250,9 @@
     box-shadow: 0 4px 14px var(--green-glow);
   }
 
-  /* Stream Selection Pop-Up Inside Notification (Image 3) */
+  /* Stream Selection Pop-Up Inside Notification - Centered in Middle */
   .notif-stream-popup {
-    position: absolute; top: 48px; left: 14px;
+    position: absolute; top: 38px; left: 50%; transform: translateX(-50%);
     background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px;
     box-shadow: 0 12px 28px rgba(0,0,0,0.28);
     padding: 5px; z-index: 30; width: 140px;
@@ -257,7 +262,7 @@
     background: #1e293b; border-color: #334155; box-shadow: 0 12px 28px rgba(0,0,0,0.6);
   }
   .notif-stream-popup.hidden {
-    opacity: 0; pointer-events: none; transform: scale(0.9) translateY(-6px);
+    opacity: 0; pointer-events: none; transform: translateX(-50%) scale(0.9) translateY(-6px);
   }
   .notif-popup-item {
     display: flex; align-items: center; gap: 8px;

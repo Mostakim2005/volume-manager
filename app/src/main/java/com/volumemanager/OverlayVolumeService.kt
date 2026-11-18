@@ -18,9 +18,8 @@ import androidx.core.app.NotificationCompat
 import com.volumemanager.overlay.OverlayController
 
 /**
- * Persistent foreground service that hosts the edge handle and compact volume
- * chip. START_STICKY lets Android recreate it after low-memory kills; Realme UI
- * still needs its manual Auto-launch and battery exemptions.
+ * Persistent foreground service that hosts the slim vertical edge handle
+ * and rotated vertical volume panel. Ultra-compact, symmetrical notification.
  */
 class OverlayVolumeService : Service() {
 
@@ -30,6 +29,8 @@ class OverlayVolumeService : Service() {
 
     private var permissionMissing = false
     private var volumePercent = 50
+    private var currentStreamName = "Media"
+
     private val handler = Handler(Looper.getMainLooper())
     private val refreshNotification = Runnable {
         notificationManager.notify(NOTIFICATION_ID, buildNotification())
@@ -42,7 +43,6 @@ class OverlayVolumeService : Service() {
         createNotificationChannel()
         volumePercent = readMediaPercent()
 
-        // Must be called immediately or the system kills the service on O+.
         startForeground(NOTIFICATION_ID, buildNotification())
 
         overlayController = OverlayController(
@@ -53,18 +53,20 @@ class OverlayVolumeService : Service() {
                 notificationManager.notify(NOTIFICATION_ID, buildNotification())
                 Log.w(TAG, "Overlay permission missing")
             },
-            onVolumeChanged = { percent ->
+            onVolumeChanged = { percent, streamName ->
                 volumePercent = percent
+                currentStreamName = streamName
                 scheduleNotificationRefresh()
             },
         )
         overlayController?.show()
-        Log.d(TAG, "Service created")
+        Log.d(TAG, "Overlay volume service created")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_TOGGLE_CHIP, ACTION_TOGGLE_PANEL -> overlayController?.toggleChip()
+            ACTION_TOGGLE_PANEL, ACTION_TOGGLE_CHIP -> overlayController?.togglePanel()
+            ACTION_CYCLE_STREAM -> overlayController?.cycleStream()
             ACTION_STOP -> {
                 stopSelf()
                 return START_NOT_STICKY
@@ -78,7 +80,7 @@ class OverlayVolumeService : Service() {
         handler.removeCallbacks(refreshNotification)
         overlayController?.destroy()
         overlayController = null
-        Log.d(TAG, "Service destroyed")
+        Log.d(TAG, "Overlay volume service destroyed")
         super.onDestroy()
     }
 
@@ -86,14 +88,13 @@ class OverlayVolumeService : Service() {
 
     private fun scheduleNotificationRefresh() {
         handler.removeCallbacks(refreshNotification)
-        handler.postDelayed(refreshNotification, 180)
+        handler.postDelayed(refreshNotification, 120)
     }
 
     private fun readMediaPercent(): Int {
         val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         if (max <= 0) return 0
-        return (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / max)
-            .coerceIn(0, 100)
+        return (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / max).coerceIn(0, 100)
     }
 
     private fun createNotificationChannel() {
@@ -115,10 +116,11 @@ class OverlayVolumeService : Service() {
             val text = if (permissionMissing) {
                 getString(R.string.notif_permission_needed)
             } else {
-                getString(R.string.notif_status, volumePercent)
+                getString(R.string.notif_status, currentStreamName, volumePercent)
             }
             setTextViewText(R.id.notif_status, text)
-            setProgressBar(R.id.notif_progress, if (permissionMissing) 0 else volumePercent, 100, false)
+            setProgressBar(R.id.notif_progress, 100, if (permissionMissing) 0 else volumePercent, false)
+
             if (permissionMissing) {
                 val settings = PendingIntent.getActivity(
                     this@OverlayVolumeService,
@@ -131,20 +133,25 @@ class OverlayVolumeService : Service() {
                 )
                 setOnClickPendingIntent(R.id.notif_root, settings)
             } else {
+                // Tapping the stream title cycles streams (Media -> Ring -> Notify -> Alarm)
+                setOnClickPendingIntent(
+                    R.id.notif_stream_header,
+                    servicePendingIntent(ACTION_CYCLE_STREAM, 2),
+                )
+                // Tapping the root body toggles the vertical overlay panel
                 setOnClickPendingIntent(
                     R.id.notif_root,
-                    servicePendingIntent(ACTION_TOGGLE_CHIP, 1),
+                    servicePendingIntent(ACTION_TOGGLE_PANEL, 1),
                 )
             }
         }
 
-        // NotificationCompat handles API 23-25 and custom views on all levels.
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_volume_small)
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(
                 if (permissionMissing) getString(R.string.notif_permission_needed)
-                else getString(R.string.notif_status, volumePercent),
+                else getString(R.string.notif_status, currentStreamName, volumePercent),
             )
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_SERVICE)
@@ -162,15 +169,14 @@ class OverlayVolumeService : Service() {
         PendingIntent.FLAG_UPDATE_CURRENT or
             (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
 
-    private companion object {
-        const val TAG = "OverlayVolumeService"
-        const val NOTIFICATION_ID = 1001
-        const val NOTIFICATION_CHANNEL_ID = "volume_overlay_channel"
+    companion object {
+        private const val TAG = "OverlayVolumeService"
+        private const val NOTIFICATION_ID = 1001
+        private const val NOTIFICATION_CHANNEL_ID = "volume_overlay_channel"
 
-        const val ACTION_TOGGLE_CHIP = "com.volumemanager.TOGGLE_CHIP"
-        @Suppress("unused")
         const val ACTION_TOGGLE_PANEL = "com.volumemanager.TOGGLE_PANEL"
-        @Suppress("unused")
+        const val ACTION_TOGGLE_CHIP = "com.volumemanager.TOGGLE_CHIP"
+        const val ACTION_CYCLE_STREAM = "com.volumemanager.CYCLE_STREAM"
         const val ACTION_STOP = "com.volumemanager.STOP"
     }
 }

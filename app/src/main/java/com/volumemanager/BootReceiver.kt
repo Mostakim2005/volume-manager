@@ -3,18 +3,16 @@ package com.volumemanager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.os.Build
 import android.os.UserManager
 import android.util.Log
 
 /**
- * Restarts the overlay utility after a reboot (or an app update).
+ * Restarts the overlay utility after a reboot or app update.
  *
- * BOOT_COMPLETED fires after unlock, so that path starts the service directly.
- * LOCKED_BOOT_COMPLETED fires before unlock; because the overlay cannot draw
- * over the lock screen and the service is not directBootAware, we defer the
- * start until ACTION_USER_UNLOCKED instead of trying to launch it too early.
+ * BOOT_COMPLETED fires after user unlock, which starts the service directly.
+ * LOCKED_BOOT_COMPLETED only starts if the user is already unlocked; otherwise,
+ * it safely waits for the standard BOOT_COMPLETED broadcast delivered by the OS.
  */
 class BootReceiver : BroadcastReceiver() {
 
@@ -27,47 +25,15 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_LOCKED_BOOT_COMPLETED -> {
                 if (isUserUnlocked(context)) {
                     startSafely(context)
-                } else {
-                    waitForUnlock(context)
                 }
             }
-        }
-    }
-
-    /** Registers a one-shot receiver in device-protected storage. */
-    private fun waitForUnlock(context: Context) {
-        val storageContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            context.createDeviceProtectedStorageContext()
-        } else {
-            context
-        }
-        val unlockReceiver = object : BroadcastReceiver() {
-            override fun onReceive(c: Context, i: Intent) {
-                try {
-                    c.unregisterReceiver(this)
-                } catch (_: Exception) {
-                    // Already unregistered.
-                }
-                startSafely(c)
-            }
-        }
-        try {
-            val filter = IntentFilter(Intent.ACTION_USER_UNLOCKED)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                storageContext.registerReceiver(unlockReceiver, filter, Context.RECEIVER_EXPORTED)
-            } else {
-                storageContext.registerReceiver(unlockReceiver, filter)
-            }
-            Log.d(TAG, "Waiting for ACTION_USER_UNLOCKED before starting overlay")
-        } catch (e: Exception) {
-            Log.w(TAG, "Could not register unlock receiver: ${e.message}")
         }
     }
 
     private fun isUserUnlocked(context: Context): Boolean =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
-            userManager.isUserUnlocked
+            val userManager = context.getSystemService(Context.USER_SERVICE) as? UserManager
+            userManager?.isUserUnlocked ?: true
         } else {
             true
         }
@@ -80,10 +46,8 @@ class BootReceiver : BroadcastReceiver() {
             } else {
                 context.startService(serviceIntent)
             }
-            Log.d(TAG, "Overlay service start requested")
+            Log.d(TAG, "Overlay service start requested from boot receiver")
         } catch (e: Exception) {
-            // Some OEM builds reject background starts; BOOT_COMPLETED usually
-            // arrives later and retries, so this is not fatal.
             Log.w(TAG, "Could not start service from boot receiver: ${e.message}")
         }
     }

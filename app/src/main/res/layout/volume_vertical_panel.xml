@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/panel_root"
+    android:layout_width="@dimen/vertical_panel_width"
+    android:layout_height="@dimen/vertical_panel_height"
+    android:background="@drawable/panel_vertical_background"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:paddingStart="6dp"
+    android:paddingEnd="6dp"
+    android:elevation="8dp">
+
+    <!-- Top Stream Icon Button (Tapping opens the Stream Popup) -->
+    <FrameLayout
+        android:id="@+id/btn_stream_icon"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="@drawable/stream_option_background"
+        android:clickable="true"
+        android:focusable="true">
+
+        <TextView
+            android:id="@+id/text_stream_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="🎵"
+            android:textSize="15sp" />
+    </FrameLayout>
+
+    <!-- Vertical Volume Track (Scrubbable UP / DOWN) -->
+    <FrameLayout
+        android:id="@+id/vertical_track_frame"
+        android:layout_width="@dimen/vertical_track_width"
+        android:layout_height="@dimen/vertical_track_height"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/vertical_track_background"
+        android:clickable="true"
+        android:focusable="true">
+
+        <!-- Filled progress level from bottom -->
+        <View
+            android:id="@+id/vertical_progress_fill"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/vertical_track_progress" />
+    </FrameLayout>
+
+    <!-- Percentage readout -->
+    <TextView
+        android:id="@+id/text_percent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="50%"
+        android:textColor="#0F172A"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
+</LinearLayout>

@@ -14,8 +14,8 @@ android {
         // is unaffected by Android 14+ foreground-service-type enforcement, and keeping
         // targetSdk below 34 avoids needing the "specialUse" FGS subtype on that device.
         targetSdk = 33
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 
     // CI supplies these env vars; local builds simply produce an unsigned APK.

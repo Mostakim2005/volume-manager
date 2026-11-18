@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="handle_width">44dp</dimen>
-    <dimen name="handle_height">44dp</dimen>
-    <dimen name="chip_width">176dp</dimen>
+    <!-- Slim filled edge pill handle (docked flush to screen edge) -->
+    <dimen name="handle_width">28dp</dimen>
+    <dimen name="handle_height">64dp</dimen>
+
+    <!-- Rotated vertical volume panel -->
+    <dimen name="vertical_panel_width">54dp</dimen>
+    <dimen name="vertical_panel_height">192dp</dimen>
+    <dimen name="vertical_track_width">34dp</dimen>
+    <dimen name="vertical_track_height">104dp</dimen>
+
+    <!-- Notification and screen margins -->
+    <dimen name="edge_margin">8dp</dimen>
     <dimen name="screen_margin">16dp</dimen>
 </resources>
