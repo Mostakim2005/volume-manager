@@ -65,6 +65,9 @@ flowchart LR
 
 ## 3. Verification Gate
 
-### [VERIFY: Build Not Run Locally] | Aliases: JDK, Android SDK, assembleDebug
-> **1-Line Summary:** No JDK 17 / Android SDK / Gradle toolchain was available in the authoring environment, so the APK was not compiled.
-* **Required before release:** `.\gradlew assembleDebug` and `.\gradlew lintDebug` on a machine with JDK 17 + Android SDK platform 35. Do not commit a release tag until both pass.
+### [VERIFY: CI And Release Verified On GitHub] | Aliases: assembleDebug, lintDebug, tag release, arm64
+> **1-Line Summary:** The authoring machine had no JDK/SDK, so verification ran in GitHub Actions; CI passed and the `v1.0.0` tag produced a signed arm64-v8a APK.
+* **Local limitation:** No JDK 17 / Android SDK / Gradle toolchain here, so `.\gradlew` was not run locally.
+* **CI result:** `assembleDebug` + `lintDebug` passed on commit `6c773df` (run `44284243727`) after fixing the `DecelerateInterpolator` import and replacing the platform `Notification.Builder` with `NotificationCompat.Builder` for API 23 lint compliance.
+* **Release result:** Tag `v1.0.0` triggered workflow run `44284766559`, which published `VolumeManager-arm64-v8a-v1.0.0.apk` (4,889,062 bytes) on the GitHub Release; the APK contains `META-INF/CERT.SF` and `META-INF/CERT.RSA` and is therefore signed.
+* **Ongoing:** CI still gates every push and PR to `main`. Re-run `.\gradlew assembleDebug lintDebug` locally if the toolchain becomes available.
