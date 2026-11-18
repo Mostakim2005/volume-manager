@@ -171,6 +171,17 @@ class OverlayController(
         val current = currentPercent(activeStream)
         syncPanelUi(current)
         onVolumeChanged(current.roundToInt(), activeStreamName)
+        showHud("$activeStreamName: ${current.roundToInt()}%")
+        scheduleHideHud()
+    }
+
+    /** Steps the active stream volume up (+1) or down (-1) by 10% increments. */
+    fun stepVolume(deltaSteps: Int) {
+        val current = currentPercent(activeStream)
+        val target = (current + deltaSteps * 10f).coerceIn(0f, 100f)
+        setPercent(target)
+        showHud("$activeStreamName: ${target.roundToInt()}%")
+        scheduleHideHud()
     }
 
     /** Removes all overlay windows and receivers. */

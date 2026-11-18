@@ -43,17 +43,19 @@
 * **Code Anchors:**
   * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `volumeChangeReceiver`, `registerReceivers`, `unregisterReceivers`
 
-### [FEATURE: Ultra-Compact Symmetrical Notification] | Aliases: green ball notification, minimal shade, theme adaptive
-> **1-Line Summary:** A symmetrical, minimal-height notification with theme-adaptive contrast, a green ball/progress track, and stream cycling on header tap.
-* **User Intention (Non-Negotiable):** Take as little vertical shade space as possible while remaining fully readable in both Light and Dark themes (WCAG AAA).
+### [FEATURE: Spacious Interactive Notification & Step Buttons] | Aliases: notification volume, shade buttons, volume buttons, minus plus
+> **1-Line Summary:** A spacious, interactive notification (~68 dp card height) with dedicated [−] and [+] volume step buttons, isolated stream switcher pill, and 10dp progress track.
+* **User Intention (Non-Negotiable):** Eliminate un-draggable slider frustration and accidental stream cycling by providing clear, large [−] and [+] touch buttons and a distinct stream pill.
 * **Visual / UI Behavior:**
-  * Centered stream title (`Media volume: 60% ▾`) and centered progress bar.
-  * Tapping the stream title cycles streams (Media -> Ring -> Notify -> Alarm).
-  * Tapping the notification body toggles the vertical overlay panel.
-  * Uses `notif_text_primary` with dedicated `values-night` resources for crisp contrast on dark backgrounds.
+  * Top row: Demarcated stream pill (`[ 🎵 Media volume: 60% ▾ ]`) on the left; tapping cycles streams. `[ 🎚️ Expand ]` button on the right; tapping opens the on-screen vertical panel.
+  * Bottom row: Dedicated 34×34 dp `[ − ]` button, centered 10dp thick progress track (`seek_progress_green`), and 34×34 dp `[ + ]` button.
+  * Tapping `[ − ]` steps active volume down by 10%; tapping `[ + ]` steps volume up by 10%.
+  * Isolated touch targets guarantee that volume changes never accidentally toggle or cycle streams.
+  * Uses `notif_btn_bg` and `notif_btn_text` with dedicated `values-night` resources for crisp contrast in both Light and Dark modes (WCAG AAA).
 * **Code Anchors:**
-  * `app/src/main/java/com/volumemanager/OverlayVolumeService.kt` -> `buildNotification`, `onStartCommand`, `scheduleNotificationRefresh`
-  * `app/src/main/res/layout/notification_volume.xml` -> `notif_root`, `notif_stream_header`, `notif_status`, `notif_progress`
+  * `app/src/main/java/com/volumemanager/OverlayVolumeService.kt` -> `buildNotification`, `onStartCommand`, `ACTION_VOLUME_UP`, `ACTION_VOLUME_DOWN`
+  * `app/src/main/java/com/volumemanager/overlay/OverlayController.kt` -> `stepVolume`
+  * `app/src/main/res/layout/notification_volume.xml` -> `btn_notif_down`, `btn_notif_up`, `notif_progress`, `notif_stream_header`, `notif_btn_panel`
 
 ### [FEATURE: Boot Auto-Start & DND Crash Protection] | Aliases: reboot survival, BOOT_COMPLETED, DND safe
 > **1-Line Summary:** Restarts service safely after unlock on boot, and catches SecurityException so Do Not Disturb / Zen mode never crashes the service.

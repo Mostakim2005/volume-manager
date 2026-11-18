@@ -67,6 +67,8 @@ class OverlayVolumeService : Service() {
         when (intent?.action) {
             ACTION_TOGGLE_PANEL, ACTION_TOGGLE_CHIP -> overlayController?.togglePanel()
             ACTION_CYCLE_STREAM -> overlayController?.cycleStream()
+            ACTION_VOLUME_UP -> overlayController?.stepVolume(1)
+            ACTION_VOLUME_DOWN -> overlayController?.stepVolume(-1)
             ACTION_STOP -> {
                 stopSelf()
                 return START_NOT_STICKY
@@ -133,15 +135,30 @@ class OverlayVolumeService : Service() {
                 )
                 setOnClickPendingIntent(R.id.notif_root, settings)
             } else {
-                // Tapping the stream title cycles streams (Media -> Ring -> Notify -> Alarm)
+                // Tapping the stream pill cycles streams (Media -> Ring -> Notify -> Alarm)
                 setOnClickPendingIntent(
                     R.id.notif_stream_header,
                     servicePendingIntent(ACTION_CYCLE_STREAM, 2),
                 )
-                // Tapping the root body toggles the vertical overlay panel
+                // Volume DOWN button (-10%)
                 setOnClickPendingIntent(
-                    R.id.notif_root,
+                    R.id.btn_notif_down,
+                    servicePendingIntent(ACTION_VOLUME_DOWN, 3),
+                )
+                // Volume UP button (+10%)
+                setOnClickPendingIntent(
+                    R.id.btn_notif_up,
+                    servicePendingIntent(ACTION_VOLUME_UP, 4),
+                )
+                // Tapping the expand button opens the on-screen vertical panel
+                setOnClickPendingIntent(
+                    R.id.notif_btn_panel,
                     servicePendingIntent(ACTION_TOGGLE_PANEL, 1),
+                )
+                // Tapping the progress track also opens the on-screen vertical panel
+                setOnClickPendingIntent(
+                    R.id.notif_progress,
+                    servicePendingIntent(ACTION_TOGGLE_PANEL, 5),
                 )
             }
         }
@@ -177,6 +194,8 @@ class OverlayVolumeService : Service() {
         const val ACTION_TOGGLE_PANEL = "com.volumemanager.TOGGLE_PANEL"
         const val ACTION_TOGGLE_CHIP = "com.volumemanager.TOGGLE_CHIP"
         const val ACTION_CYCLE_STREAM = "com.volumemanager.CYCLE_STREAM"
+        const val ACTION_VOLUME_UP = "com.volumemanager.VOLUME_UP"
+        const val ACTION_VOLUME_DOWN = "com.volumemanager.VOLUME_DOWN"
         const val ACTION_STOP = "com.volumemanager.STOP"
     }
 }

@@ -14,6 +14,9 @@
     <color name="notif_text_primary">#0F172A</color>
     <color name="notif_text_secondary">#64748B</color>
     <color name="notif_track_bg">#E2E8F0</color>
+    <color name="notif_btn_bg">#E2E8F0</color>
+    <color name="notif_btn_stroke">#CBD5E1</color>
+    <color name="notif_btn_text">#0F172A</color>
     <color name="text_primary">#0F172A</color>
     <color name="text_secondary">#64748B</color>
     <color name="card_background">#FFFFFF</color>

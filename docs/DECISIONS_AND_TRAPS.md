@@ -27,11 +27,12 @@
 * **Status:** `[DECIDED BY: AGENT]`
 * **Anchors:** `OverlayController -> setPercent`.
 
-### [DECISION: Ultra-Compact Symmetrical Notification] | Aliases: green ball notification, minimal shade, centered
-> **1-Line Summary:** Streamlined notification to minimal vertical height with centered, symmetrical alignment and theme-adaptive colors.
-* **Semantics:** Stream title and volume level centered on top; tapping cycles streams; centered progress bar underneath with green ball styling.
+### [DECISION: Spacious Notification With Step Buttons Over Drag-Slider] | Aliases: notification buttons, minus plus, spacious shade
+> **1-Line Summary:** Replaced the cramped notification with a spacious ~68dp card featuring dedicated [−] and [+] step buttons and an isolated stream switcher pill.
+* **What was rejected:** Ultra-thin ~32dp notification with un-draggable ProgressBar and stream header that accidentally cycled on thumb touch.
+* **Semantics:** Dedicated 34×34 dp [−] and [+] buttons step volume up/down by 10%; stream pill is isolated; [🎚️ Expand] button opens on-screen draggable vertical panel.
 * **Status:** `[DECIDED BY: HUMAN]`
-* **Anchors:** `OverlayVolumeService -> buildNotification`; `app/src/main/res/layout/notification_volume.xml`.
+* **Anchors:** `OverlayVolumeService -> buildNotification`, `ACTION_VOLUME_UP`, `ACTION_VOLUME_DOWN`; `app/src/main/res/layout/notification_volume.xml`.
 
 ### [DECISION: Layered XML Project Over Single Programmatic Service] | Aliases: XML vs programmatic, architecture choice
 > **1-Line Summary:** Chose XML layouts plus a dedicated `OverlayController` instead of building all views inside the service.
@@ -107,6 +108,11 @@ flowchart TD
 > **1-Line Summary:** Hardcoding touch slop to a small value (e.g. 6 dp / 8 px) causes natural thumb micro-jitter to be classified as a move, preventing tap actions.
 * **Avoidance:** Always use `ViewConfiguration.get(context).scaledTouchSlop` (~16–20 px) so taps register cleanly.
 * **Anchors:** `OverlayController -> attachHandleTouch`.
+
+### [TRAP: RemoteViews Drag Limitation Swallowing Gestures] | Aliases: notification slider drag, shade gesture conflict, accidental stream cycle
+> **1-Line Summary:** Android notification shades swallow horizontal drags for notification dismissal, and header touch targets catch thumb jitter.
+* **Avoidance:** Do not rely on continuous drag gestures inside RemoteViews. Provide explicit, large [−] and [+] buttons for 10% volume stepping, and isolate the stream selector pill so volume touches never accidentally cycle streams.
+* **Anchors:** `OverlayVolumeService -> buildNotification`; `app/src/main/res/layout/notification_volume.xml`.
 
 ## 3. Verification Gate
 
