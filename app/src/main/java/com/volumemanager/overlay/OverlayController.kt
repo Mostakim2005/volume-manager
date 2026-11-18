@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.PixelFormat
+import android.graphics.Rect
 import android.media.AudioManager
 import android.os.Build
 import android.provider.Settings
@@ -17,64 +18,72 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
-import android.widget.ImageButton
-import com.google.android.material.slider.Slider
+import android.widget.SeekBar
+import android.widget.TextView
 import com.volumemanager.R
+import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 /**
- * Owns both overlay windows: the draggable edge handle and the expandable
- * volume card. All WindowManager add/update/remove calls live here so the
- * foreground service stays small and lifecycle-safe.
+ * Owns the two overlay windows: the orange edge handle and the compact volume
+ * chip. Every WindowManager call is guarded so an OEM quirk cannot kill the
+ * foreground service. Volume is changed only by dragging the edge handle
+ * vertically or dragging the chip's SeekBar — there are no +/- buttons.
  */
 class OverlayController(
     private val context: Context,
     private val audioManager: AudioManager,
     private val onOverlayPermissionMissing: () -> Unit,
+    private val onVolumeChanged: (Int) -> Unit,
 ) {
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val inflater = LayoutInflater.from(context)
     private val density = context.resources.displayMetrics.density
 
-    private val dragStepPx = dp(16f)     // discrete vertical grid while dragging
-    private val touchSlopPx = dp(8f)     // below this => treated as a click
-    private val edgeMarginPx = dp(8f)
-    private val panelWidthPx = dp(280f)
-    private val handleFallbackPx = dp(56f)
+    private val touchSlop = dp(8f)
+    private val volumeStepPx = dp(14f)
+    private val edgeMargin = dp(8f)
+    private val chipWidth = dp(176f)
+    private val handleSize = dp(44f)
 
-    private var handleView: View? = null
+    private var handle: View? = null
     private var handleParams: WindowManager.LayoutParams? = null
-    private var panelView: View? = null
-    private var panelParams: WindowManager.LayoutParams? = null
-    private var isPanelOpen = false
-    private var isSyncingSliders = false
-    private var edgeAnimator: ValueAnimator? = null
+    private var chip: View? = null
+    private var chipParams: WindowManager.LayoutParams? = null
 
-    private val streamSliderIds = intArrayOf(
-        R.id.slider_music,
-        R.id.slider_ring,
-        R.id.slider_alarm,
-        R.id.slider_notification,
-    )
     private val streams = intArrayOf(
         AudioManager.STREAM_MUSIC,
         AudioManager.STREAM_RING,
         AudioManager.STREAM_ALARM,
         AudioManager.STREAM_NOTIFICATION,
     )
+    private val optionIds = intArrayOf(
+        R.id.opt_media,
+        R.id.opt_ring,
+        R.id.opt_alarm,
+        R.id.opt_notify,
+    )
+    private val labels = intArrayOf(
+        R.string.stream_music_short,
+        R.string.stream_ring_short,
+        R.string.stream_alarm_short,
+        R.string.stream_notify_short,
+    )
 
-    /** Re-clamp both windows after a rotation or multi-window resize. */
+    private var activeStream = AudioManager.STREAM_MUSIC
+    private var activeLabelRes = R.string.stream_music_short
+    private var edgeAnimator: ValueAnimator? = null
+
     private val configReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, intent: Intent) {
             handleParams?.let { params ->
                 val (width, height) = screenSize()
-                val viewW = handleView?.width?.takeIf { it > 0 } ?: handleFallbackPx
-                params.x = params.x.coerceIn(0, (width - viewW).coerceAtLeast(0))
-                params.y = params.y.coerceIn(0, (height - viewW).coerceAtLeast(0))
-                handleView?.let { updateSafely(it, params) }
+                params.x = params.x.coerceIn(0, (width - handleSize).coerceAtLeast(0))
+                params.y = params.y.coerceIn(0, (height - handleSize).coerceAtLeast(0))
+                handle?.let { updateSafely(it, params) }
             }
-            if (isPanelOpen) positionPanel()
+            if (chip != null) positionChip()
         }
     }
 
@@ -84,69 +93,63 @@ class OverlayController(
             onOverlayPermissionMissing()
             return
         }
-        if (handleView != null) return
+        if (handle != null) return
 
         val view = inflater.inflate(R.layout.floating_handle, null)
         val params = overlayParams()
         val (_, height) = screenSize()
         params.x = 0
-        params.y = (height * 0.35f).toInt()
+        params.y = (height * 0.36f).toInt()
 
-        attachHandleTouchListener(view, params)
+        attachHandleTouch(view, params)
         try {
             windowManager.addView(view, params)
-            handleView = view
+            handle = view
             handleParams = params
-            try {
-                val filter = IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    context.registerReceiver(configReceiver, filter, Context.RECEIVER_EXPORTED)
-                } else {
-                    context.registerReceiver(configReceiver, filter)
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Could not register config receiver: ${e.message}")
-            }
+            registerConfigReceiver()
             Log.d(TAG, "Edge handle added")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add handle: ${e.message}")
         }
     }
 
-    /** Opens the volume card when it is closed, and closes it when open. */
-    fun togglePanel() {
+    /** Shows the chip when hidden, hides it when visible. */
+    fun toggleChip() {
         if (!Settings.canDrawOverlays(context)) {
             onOverlayPermissionMissing()
             return
         }
-        if (isPanelOpen) closePanel() else openPanel()
+        if (chip != null) closeChip() else openChip()
     }
 
-    /** Removes every window and cancels running animations. */
+    /** Removes both windows and cancels any running animation. */
     fun destroy() {
         edgeAnimator?.cancel()
         edgeAnimator = null
-        closePanel()
-        removeSafely(handleView)
-        handleView = null
+        closeChip()
+        removeSafely(handle)
+        handle = null
         handleParams = null
         try {
             context.unregisterReceiver(configReceiver)
         } catch (_: Exception) {
-            // Receiver was never registered (overlay permission was missing).
+            // Receiver was never registered.
         }
     }
 
     // ------------------------------------------------------------------
-    // Touch: drag with a stepped Y grid, click to expand, snap on release
+    // Edge handle: vertical drag = volume, horizontal drag = move, tap = chip
     // ------------------------------------------------------------------
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun attachHandleTouchListener(view: View, params: WindowManager.LayoutParams) {
+    private fun attachHandleTouch(view: View, params: WindowManager.LayoutParams) {
         var startX = 0
         var startY = 0
         var startRawX = 0f
         var startRawY = 0f
+        var startPercent = 0f
+        // 0 = undecided, 1 = moving the handle, 2 = changing volume
+        var mode = 0
 
         view.setOnTouchListener { v, event ->
             when (event.actionMasked) {
@@ -156,30 +159,39 @@ class OverlayController(
                     startY = params.y
                     startRawX = event.rawX
                     startRawY = event.rawY
+                    startPercent = currentPercent(activeStream)
+                    mode = 0
                     true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.rawX - startRawX
                     val dy = event.rawY - startRawY
-                    val (width, height) = screenSize()
-                    val viewW = v.width.takeIf { it > 0 } ?: handleFallbackPx
-                    val viewH = v.height.takeIf { it > 0 } ?: handleFallbackPx
 
-                    params.x = (startX + dx).roundToInt().coerceIn(0, width - viewW)
-                    val steppedDy = ((dy / dragStepPx).roundToInt() * dragStepPx).toInt()
-                    params.y = (startY + steppedDy).coerceIn(0, height - viewH)
-                    updateSafely(v, params)
+                    if (mode == 0 && hypot(dx, dy) >= touchSlop) {
+                        mode = if (abs(dx) > abs(dy)) 1 else 2
+                    }
+
+                    if (mode == 1) {
+                        val (width, height) = screenSize()
+                        val viewW = v.width.takeIf { it > 0 } ?: handleSize
+                        params.x = (startX + dx).roundToInt().coerceIn(0, (width - viewW).coerceAtLeast(0))
+                        params.y = (startY + dy).roundToInt().coerceIn(0, (height - viewW).coerceAtLeast(0))
+                        updateSafely(v, params)
+                        if (chip != null) positionChip()
+                    } else if (mode == 2) {
+                        val steps = (-dy / volumeStepPx).roundToInt()
+                        setPercent(startPercent + steps * 10f)
+                    }
                     true
                 }
 
-                MotionEvent.ACTION_UP -> {
-                    val distance = hypot(event.rawX - startRawX, event.rawY - startRawY)
-                    if (distance < touchSlopPx) {
-                        togglePanel()
-                    } else {
-                        snapToNearestEdge()
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    when (mode) {
+                        0 -> if (event.actionMasked == MotionEvent.ACTION_UP) toggleChip()
+                        1 -> snapToEdge(v, params)
                     }
+                    mode = 0
                     true
                 }
 
@@ -188,125 +200,194 @@ class OverlayController(
         }
     }
 
-    private fun snapToNearestEdge() {
-        val view = handleView ?: return
-        val params = handleParams ?: return
-        val viewW = view.width.takeIf { it > 0 } ?: handleFallbackPx
+    private fun snapToEdge(view: View, params: WindowManager.LayoutParams) {
+        val viewW = view.width.takeIf { it > 0 } ?: handleSize
         val (width, _) = screenSize()
-        val targetX = if (params.x + viewW / 2 < width / 2) 0 else width - viewW
+        val target = if (params.x + viewW / 2 < width / 2) 0 else width - viewW
 
         edgeAnimator?.cancel()
-        edgeAnimator = ValueAnimator.ofInt(params.x, targetX).apply {
-            duration = 260
+        edgeAnimator = ValueAnimator.ofInt(params.x, target).apply {
+            duration = 220
             interpolator = DecelerateInterpolator()
             addUpdateListener { animation ->
                 params.x = animation.animatedValue as Int
                 updateSafely(view, params)
-                if (isPanelOpen) positionPanel()
+                if (chip != null) positionChip()
             }
             start()
         }
     }
 
     // ------------------------------------------------------------------
-    // Volume panel
+    // Compact chip
     // ------------------------------------------------------------------
 
     @SuppressLint("InflateParams")
-    private fun openPanel() {
-        if (panelView != null) return
-        val view = inflater.inflate(R.layout.volume_panel, null)
-        bindSliders(view)
-        view.findViewById<ImageButton>(R.id.btn_close).setOnClickListener { closePanel() }
+    private fun openChip() {
+        if (chip != null) return
+        val view = inflater.inflate(R.layout.volume_chip, null)
 
-        // Pre-measure so we can place the card without an extra layout pass.
-        view.measure(
-            View.MeasureSpec.makeMeasureSpec(panelWidthPx, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-        )
-        val panelW = view.measuredWidth.takeIf { it > 0 } ?: panelWidthPx
-        val panelH = view.measuredHeight.takeIf { it > 0 } ?: dp(280f)
+        val seek = view.findViewById<SeekBar>(R.id.chip_seek)
+        val percentText = view.findViewById<TextView>(R.id.chip_percent)
+        val streamLabel = view.findViewById<TextView>(R.id.chip_stream)
+        val options = view.findViewById<View>(R.id.chip_options)
 
-        val params = overlayParams().apply { width = panelW; height = panelH }
-        panelParams = params
-        positionPanel() // computes x/y; updateSafely is a no-op until the view is attached
+        seek.max = 10
+        seek.progress = (currentPercent(activeStream) / 10f).roundToInt().coerceIn(0, 10)
+        percentText.text = getPercentLabel(activeStream)
+        streamLabel.text = context.getString(activeLabelRes)
+
+        seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                setPercent(progress * 10f)
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+        })
+
+        streamLabel.setOnClickListener {
+            options.visibility = if (options.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+            chipParams?.let { windowManager.updateViewLayout(view, it) }
+        }
+
+        for (i in optionIds.indices) {
+            view.findViewById<TextView>(optionIds[i]).setOnClickListener {
+                activeStream = streams[i]
+                activeLabelRes = labels[i]
+                streamLabel.text = context.getString(activeLabelRes)
+                options.visibility = View.GONE
+                seek.progress = (currentPercent(activeStream) / 10f).roundToInt().coerceIn(0, 10)
+                percentText.text = getPercentLabel(activeStream)
+                chipParams?.let { windowManager.updateViewLayout(view, it) }
+            }
+        }
+
+        attachChipDrag(view)
+
+        val params = overlayParams().apply { width = chipWidth }
+        chipParams = params
+        positionChip()
 
         try {
             windowManager.addView(view, params)
-            panelView = view
-            isPanelOpen = true
-            syncSlidersFromAudio()
-            Log.d(TAG, "Volume panel opened")
+            chip = view
+            Log.d(TAG, "Volume chip opened")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to add panel: ${e.message}")
+            Log.e(TAG, "Failed to add chip: ${e.message}")
+            chipParams = null
         }
     }
 
-    private fun closePanel() {
-        val view = panelView ?: return
-        removeSafely(view)
-        panelView = null
-        panelParams = null
-        isPanelOpen = false
-    }
+    @SuppressLint("ClickableViewAccessibility")
+    private fun attachChipDrag(view: View) {
+        var startX = 0
+        var startY = 0
+        var startRawX = 0f
+        var startRawY = 0f
 
-    /** Keeps the panel anchored beside whichever edge the handle is docked to. */
-    private fun positionPanel() {
-        val params = panelParams ?: return
-        val (width, height) = screenSize()
-        val panelW = params.width.takeIf { it > 0 } ?: panelWidthPx
-        val panelH = params.height.takeIf { it > 0 } ?: dp(280f)
-        val handle = handleParams
-
-        if (handle == null) {
-            params.x = ((width - panelW) / 2).coerceAtLeast(edgeMarginPx)
-            params.y = edgeMarginPx
-        } else {
-            val handleW = handleView?.width?.takeIf { it > 0 } ?: handleFallbackPx
-            val dockedLeft = handle.x + handleW / 2 < width / 2
-            params.x = if (dockedLeft) {
-                handle.x + handleW + edgeMarginPx
-            } else {
-                width - panelW - edgeMarginPx
+        view.setOnTouchListener { v, event ->
+            // Let the SeekBar and the stream label handle their own touches.
+            if (event.actionMasked == MotionEvent.ACTION_DOWN &&
+                (isInside(v, R.id.chip_seek, event) || isInside(v, R.id.chip_stream, event) ||
+                    isInside(v, R.id.chip_options, event))
+            ) {
+                return@setOnTouchListener false
             }
-            params.y = (handle.y - panelH / 2 + handleFallbackPx / 2)
-                .coerceIn(edgeMarginPx, (height - panelH - edgeMarginPx).coerceAtLeast(edgeMarginPx))
-        }
-        panelView?.let { updateSafely(it, params) }
-    }
 
-    private fun bindSliders(root: View) {
-        for (i in streamSliderIds.indices) {
-            val slider = root.findViewById<Slider>(streamSliderIds[i])
-            val stream = streams[i]
-            slider.valueFrom = 0f
-            slider.valueTo = 100f
-            slider.stepSize = 10f
-            slider.addOnChangeListener { _, value, fromUser ->
-                if (fromUser && !isSyncingSliders) {
-                    val max = audioManager.getStreamMaxVolume(stream)
-                    val target = ((value / 100f) * max).roundToInt().coerceIn(0, max)
-                    audioManager.setStreamVolume(stream, target, 0)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    val params = chipParams ?: return@setOnTouchListener false
+                    startX = params.x
+                    startY = params.y
+                    startRawX = event.rawX
+                    startRawY = event.rawY
+                    true
                 }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val params = chipParams ?: return@setOnTouchListener false
+                    val (width, height) = screenSize()
+                    val chipH = v.height.takeIf { it > 0 } ?: dp(70f)
+                    params.x = (startX + (event.rawX - startRawX)).roundToInt()
+                        .coerceIn(edgeMargin, (width - chipWidth - edgeMargin).coerceAtLeast(edgeMargin))
+                    params.y = (startY + (event.rawY - startRawY)).roundToInt()
+                        .coerceIn(edgeMargin, (height - chipH - edgeMargin).coerceAtLeast(edgeMargin))
+                    updateSafely(v, params)
+                    true
+                }
+
+                else -> false
             }
         }
     }
 
-    private fun syncSlidersFromAudio() {
-        val view = panelView ?: return
-        isSyncingSliders = true
-        for (i in streamSliderIds.indices) {
-            val slider = view.findViewById<Slider>(streamSliderIds[i])
-            slider.value = streamToPercent(streams[i])
+    private fun isInside(root: View, id: Int, event: MotionEvent): Boolean {
+        val child = root.findViewById<View>(id) ?: return false
+        if (child.visibility != View.VISIBLE) return false
+        val rect = Rect()
+        return if (child.getGlobalVisibleRect(rect)) {
+            rect.contains(event.rawX.toInt(), event.rawY.toInt())
+        } else {
+            false
         }
-        isSyncingSliders = false
     }
 
-    private fun streamToPercent(stream: Int): Float {
+    private fun closeChip() {
+        val view = chip ?: return
+        removeSafely(view)
+        chip = null
+        chipParams = null
+    }
+
+    private fun positionChip() {
+        val params = chipParams ?: return
+        val (width, height) = screenSize()
+        val handleParams = handleParams
+        val chipH = chip?.height?.takeIf { it > 0 } ?: dp(70f)
+
+        if (handleParams == null) {
+            params.x = ((width - chipWidth) / 2).coerceAtLeast(edgeMargin)
+            params.y = dp(180f)
+        } else {
+            val handleW = handle?.width?.takeIf { it > 0 } ?: handleSize
+            val onLeft = handleParams.x + handleW / 2 < width / 2
+            params.x = if (onLeft) {
+                handleParams.x + handleW + edgeMargin
+            } else {
+                width - chipWidth - edgeMargin
+            }
+            params.y = (handleParams.y - chipH / 2 + handleSize / 2)
+                .coerceIn(edgeMargin, (height - chipH - edgeMargin).coerceAtLeast(edgeMargin))
+        }
+        chip?.let { updateSafely(it, params) }
+    }
+
+    // ------------------------------------------------------------------
+    // Volume mapping
+    // ------------------------------------------------------------------
+
+    private fun setPercent(percent: Float) {
+        val clamped = percent.coerceIn(0f, 100f)
+        val max = audioManager.getStreamMaxVolume(activeStream)
+        if (max <= 0) return
+        val target = ((clamped / 100f) * max).roundToInt().coerceIn(0, max)
+        audioManager.setStreamVolume(activeStream, target, 0)
+
+        chip?.findViewById<SeekBar>(R.id.chip_seek)?.progress = (clamped / 10f).roundToInt().coerceIn(0, 10)
+        chip?.findViewById<TextView>(R.id.chip_percent)?.text = "${clamped.roundToInt()}%"
+        onVolumeChanged(clamped.roundToInt())
+    }
+
+    private fun currentPercent(stream: Int): Float {
         val max = audioManager.getStreamMaxVolume(stream)
         if (max <= 0) return 0f
         return (audioManager.getStreamVolume(stream) * 100f / max).coerceIn(0f, 100f)
     }
+
+    private fun getPercentLabel(stream: Int): String =
+        "${currentPercent(stream).roundToInt()}%"
 
     // ------------------------------------------------------------------
     // Window helpers
@@ -326,9 +407,7 @@ class OverlayController(
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT,
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-        }
+        ).apply { gravity = Gravity.TOP or Gravity.START }
     }
 
     private fun screenSize(): Pair<Int, Int> =
@@ -342,6 +421,19 @@ class OverlayController(
             windowManager.defaultDisplay.getSize(point)
             point.x to point.y
         }
+
+    private fun registerConfigReceiver() {
+        try {
+            val filter = IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(configReceiver, filter, Context.RECEIVER_EXPORTED)
+            } else {
+                context.registerReceiver(configReceiver, filter)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not register config receiver: ${e.message}")
+        }
+    }
 
     private fun updateSafely(view: View, params: WindowManager.LayoutParams) {
         if (!view.isAttachedToWindow) return

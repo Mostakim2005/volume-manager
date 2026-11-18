@@ -4,15 +4,14 @@
 
     <!-- Foreground-service notification -->
     <string name="notification_channel_name">Volume overlay service</string>
-    <string name="notification_channel_desc">Silent notification that keeps the edge volume panel alive.</string>
-    <string name="notification_title">Volume overlay</string>
-    <string name="notif_media_down">Media volume down</string>
-    <string name="notif_media_up">Media volume up</string>
-    <string name="notif_toggle">Toggle panel</string>
-    <string name="notif_stop">Stop service</string>
+    <string name="notification_channel_desc">Silent notification that keeps the edge volume dock alive.</string>
+    <string name="notification_title">Volume Manager</string>
+    <string name="notif_status">Edge volume · %1$d%%</string>
+    <string name="notif_permission_needed">Tap to grant overlay permission</string>
+    <string name="notif_media_down">Volume icon</string>
 
     <!-- Main activity -->
-    <string name="main_intro">A Realme-style edge volume panel. Drag the pill to the left or right edge, tap it to open the stepped sliders.</string>
+    <string name="main_intro">Drag the orange edge pill up or down to change volume in 10% steps. Tap it to show the compact volume chip; drag the chip anywhere on screen.</string>
     <string name="main_setup_heading">Realme 6 / Realme UI setup (required)</string>
     <string name="main_setup_hint">Auto-launch must be ON or Realme UI blocks the boot receiver after a restart. In App Battery Management allow both background and foreground activity.</string>
     <string name="btn_overlay">Display over other apps</string>
@@ -25,12 +24,10 @@
     <string name="status_heading">Permission status</string>
 
     <!-- Floating overlay -->
-    <string name="handle_content_description">Drag to move, tap to open volume panel</string>
-    <string name="panel_title">Volume</string>
-    <string name="close">Close</string>
-    <string name="stream_music">Music</string>
-    <string name="stream_ring">Ring</string>
-    <string name="stream_alarm">Alarm</string>
-    <string name="stream_notification">Notification</string>
-    <string name="panel_footer">Discrete 10-point steps · accurate, repeatable control</string>
+    <string name="handle_content_description">Drag up or down for volume, tap to toggle the volume chip</string>
+    <string name="stream_music_short">Media</string>
+    <string name="stream_ring_short">Ring</string>
+    <string name="stream_alarm_short">Alarm</string>
+    <string name="stream_notify_short">Notify</string>
+    <string name="zero_percent">0%</string>
 </resources>
