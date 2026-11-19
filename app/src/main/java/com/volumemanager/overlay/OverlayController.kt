@@ -8,7 +8,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.PixelFormat
 import android.graphics.Rect
+import android.media.AudioAttributes
 import android.media.AudioManager
+import android.media.AudioPlaybackConfiguration
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -23,39 +25,49 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.TextView
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import com.volumemanager.R
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 /**
- * Owns the floating overlay windows:
- * 1. Slim filled vertical edge pill (width 28dp, height 64dp) with direct UP/DOWN scrubbing.
- * 2. Rotated vertical volume panel (width 54dp, height 192dp) with stream popover.
- * 3. Transient floating HUD tooltip.
+ * Owns all floating overlay windows and real-time audio stream detection:
+ * 1. 48x48dp squircle edge handle with vertical scrub, tap-to-panel, and hold-to-move.
+ * 2. 80x228dp vertical volume slider panel with stream button and live readout.
+ * 3. 164dp 6-option stream selector popup (Auto + Media, Ring, Notify, Call, Alarm).
+ * 4. Transient floating HUD capsule for volume and DND feedback.
  */
 class OverlayController(
     private val context: Context,
     private val audioManager: AudioManager,
     private val onOverlayPermissionMissing: () -> Unit,
-    private val onVolumeChanged: (Int, String) -> Unit,
+    private val onVolumeChanged: (
+        percent: Int,
+        streamIndex: Int,
+        streamName: String,
+        streamIcon: String,
+        isManual: Boolean,
+        immediate: Boolean,
+    ) -> Unit,
 ) {
+    data class VolumeStream(val streamType: Int, val label: String, val icon: String)
+
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val inflater = LayoutInflater.from(context)
     private val density = context.resources.displayMetrics.density
     private val handler = Handler(Looper.getMainLooper())
 
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
-    private val volumeStepPx = dp(14f)
-    private val edgeMargin = dp(8f)
 
-    private val handleWidth = dp(48f)
-    private val handleHeight = dp(48f)
-    private val panelWidth = dp(54f)
-    private val panelHeight = dp(192f)
-    private val popupWidth = dp(128f)
+    private val handleWidth = context.resources.getDimensionPixelSize(R.dimen.handle_width)
+    private val handleHeight = context.resources.getDimensionPixelSize(R.dimen.handle_height)
+    private val panelWidth = context.resources.getDimensionPixelSize(R.dimen.vertical_panel_width)
+    private val panelHeight = context.resources.getDimensionPixelSize(R.dimen.vertical_panel_height)
+    private val trackHeightPx = context.resources.getDimensionPixelSize(R.dimen.vertical_track_height)
+    private val popupWidth = context.resources.getDimensionPixelSize(R.dimen.stream_popup_width)
+    private val edgeMargin = context.resources.getDimensionPixelSize(R.dimen.edge_margin)
 
     private var handle: View? = null
     private var handleParams: WindowManager.LayoutParams? = null
@@ -69,61 +81,57 @@ class OverlayController(
     private var hud: View? = null
     private var hudParams: WindowManager.LayoutParams? = null
 
-    private val streams = intArrayOf(
-        AudioManager.STREAM_MUSIC,
-        AudioManager.STREAM_RING,
-        AudioManager.STREAM_NOTIFICATION,
-        AudioManager.STREAM_ALARM,
+    private val streams = listOf(
+        VolumeStream(AudioManager.STREAM_MUSIC, context.getString(R.string.stream_music_short), "🎵"),
+        VolumeStream(AudioManager.STREAM_RING, context.getString(R.string.stream_ring_short), "🔔"),
+        VolumeStream(AudioManager.STREAM_NOTIFICATION, context.getString(R.string.stream_notify_short), "💬"),
+        VolumeStream(AudioManager.STREAM_VOICE_CALL, context.getString(R.string.stream_call_short), "📞"),
+        VolumeStream(AudioManager.STREAM_ALARM, context.getString(R.string.stream_alarm_short), "⏰"),
     )
-    private val streamLabels = arrayOf("Media", "Ring", "Notify", "Alarm")
-    private val streamIcons = arrayOf("🎵", "🔔", "💬", "⏰")
 
-    private var activeStreamIndex = 0
-    val activeStream: Int get() = streams[activeStreamIndex]
-    val activeStreamName: String get() = streamLabels[activeStreamIndex]
-    val activeStreamIcon: String get() = streamIcons[activeStreamIndex]
+    private var activeStreamIndex = INDEX_MEDIA
+    private var manualLockActive = false
+    private var dragLastSentStep = -1
+    private var receiversRegistered = false
+    private var playbackCallback: Any? = null
 
-    /** Smart auto-focus: if media is playing (YouTube, Spotify, etc.), focus Media stream */
-    fun autoFocusMediaIfActive() {
-        if (audioManager.isMusicActive && activeStreamIndex != 0) {
-            activeStreamIndex = 0
-            lastDispatchedStep = -1
-        }
-    }
+    val activeStream: Int get() = streams[activeStreamIndex].streamType
+    val activeStreamName: String get() = streams[activeStreamIndex].label
+    val activeStreamIcon: String get() = streams[activeStreamIndex].icon
 
     private var edgeAnimator: ValueAnimator? = null
     private var isRepositionMode = false
 
-    // Auto-dismiss and idle dimming timers
     private val idleDimRunnable = Runnable {
         handle?.animate()?.alpha(0.35f)?.setDuration(250)?.start()
     }
+
     private val autoDismissPanelRunnable = Runnable {
         closePopup()
         closePanel()
-        // Auto-revert back to Media stream so next time it is ready for media playback
-        if (activeStreamIndex != 0) {
-            activeStreamIndex = 0
-            lastDispatchedStep = -1
-        }
     }
+
+    private val clearManualLockRunnable = Runnable {
+        if (!manualLockActive) return@Runnable
+        manualLockActive = false
+        activeStreamIndex = detectSmartStreamIndex()
+        dragLastSentStep = -1
+        syncAllUi(currentPercent(activeStream), immediate = true)
+    }
+
     private val hideHudRunnable = Runnable {
         removeSafely(hud)
         hud = null
         hudParams = null
     }
 
-    // External volume sync receiver
     private val volumeChangeReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, intent: Intent) {
             val streamType = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
-            // CRITICAL: Never let background broadcasts for Notification or Ring hijack activeStreamIndex
-            // away from Media! Only sync UI if the broadcast is for the currently active stream.
+            // Keep background Notification/Ring broadcasts from hijacking activeStreamIndex.
             if (streamType == -1 || streamType == activeStream) {
-                val current = currentPercent(activeStream)
-                lastDispatchedStep = audioManager.getStreamVolume(activeStream)
-                syncPanelUi(current)
-                onVolumeChanged(current.roundToInt(), activeStreamName)
+                dragLastSentStep = -1
+                syncAllUi(currentPercent(activeStream), immediate = true)
             }
         }
     }
@@ -145,7 +153,7 @@ class OverlayController(
         }
     }
 
-    /** Adds the slim edge pill if permission is granted. */
+    /** Adds the 48dp squircle edge handle if overlay permission is granted. */
     fun show() {
         if (!Settings.canDrawOverlays(context)) {
             onOverlayPermissionMissing()
@@ -170,13 +178,19 @@ class OverlayController(
             updateGestureExclusion()
             registerReceivers()
             resetIdleTimer()
-            Log.d(TAG, "Slim edge handle added")
+            Log.d(TAG, "Squircle edge handle added")
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to add handle: ${e.message}")
         }
     }
 
-    /** Toggles the vertical volume slider panel. */
+    /** Syncs current stream detection and live hardware volume to UI and notification. */
+    fun syncCurrentState() {
+        resolveStreamForInteraction()
+        syncAllUi(currentPercent(activeStream), immediate = true)
+    }
+
+    /** Toggles the vertical volume slider panel from the edge handle. */
     fun togglePanel() {
         if (!Settings.canDrawOverlays(context)) {
             onOverlayPermissionMissing()
@@ -185,27 +199,64 @@ class OverlayController(
         if (panel != null) closePanel() else openPanel()
     }
 
-    /** Cycles to the next audio stream (for notification tap). */
+    /** Opens or refreshes the vertical volume panel after notification shade collapse. */
+    fun openPanelFromNotification() {
+        if (!Settings.canDrawOverlays(context)) {
+            onOverlayPermissionMissing()
+            return
+        }
+        if (panel == null) {
+            openPanel()
+        } else {
+            resolveStreamForInteraction()
+            syncAllUi(currentPercent(activeStream), immediate = false)
+            resetAutoDismissPanel()
+        }
+    }
+
+    /** Cycles manually to the next stream profile and locks manual override for 15s. */
     fun cycleStream() {
-        activeStreamIndex = (activeStreamIndex + 1) % streams.size
+        selectStreamManual((activeStreamIndex + 1) % streams.size)
+    }
+
+    /** Selects a specific stream profile manually and keeps it locked for 15s of inactivity. */
+    fun selectStreamManual(index: Int) {
+        if (index !in streams.indices) return
+        activeStreamIndex = index
+        manualLockActive = true
+        dragLastSentStep = -1
+        refreshManualLockTimer()
         val current = currentPercent(activeStream)
-        syncPanelUi(current)
-        onVolumeChanged(current.roundToInt(), activeStreamName)
+        syncAllUi(current, immediate = true)
         showHud("$activeStreamName: ${current.roundToInt()}%")
         scheduleHideHud()
     }
 
-    /** Steps the active stream volume up (+1) or down (-1) by 10% increments. */
-    fun stepVolume(deltaSteps: Int) {
-        autoFocusMediaIfActive()
+    /** Clears manual override and immediately returns to smart stream auto-detection. */
+    fun enableAutoMode() {
+        handler.removeCallbacks(clearManualLockRunnable)
+        manualLockActive = false
+        activeStreamIndex = detectSmartStreamIndex()
+        dragLastSentStep = -1
         val current = currentPercent(activeStream)
-        val target = (current + deltaSteps * 10f).coerceIn(0f, 100f)
-        setPercent(target)
-        showHud("$activeStreamName: ${target.roundToInt()}%")
+        syncAllUi(current, immediate = true)
+        showHud("${context.getString(R.string.stream_auto_short)} • $activeStreamName: ${current.roundToInt()}%")
         scheduleHideHud()
     }
 
-    /** Removes all overlay windows and receivers. */
+    /** Steps the active stream by at least +/-1 discrete OS hardware step and reads back truth. */
+    fun stepVolume(deltaSteps: Int) {
+        resolveStreamForInteraction()
+        val stream = activeStream
+        val min = streamMin(stream)
+        val max = streamMax(stream)
+        if (max <= 0) return
+        val currentStep = audioManager.getStreamVolume(stream)
+        val targetStep = (currentStep + deltaSteps).coerceIn(min, max)
+        applyHardwareStep(targetStep, isDiscreteStep = true, showFeedbackHud = true)
+    }
+
+    /** Removes all overlay windows, callbacks, and receivers. */
     fun destroy() {
         handler.removeCallbacksAndMessages(null)
         edgeAnimator?.cancel()
@@ -222,7 +273,101 @@ class OverlayController(
     }
 
     // ------------------------------------------------------------------
-    // Slim Edge Pill: Direct UP/DOWN Scrub, Tap to Open, Hold to Move
+    // Smart Stream Detection (Mode + Active Playback + Media Default)
+    // ------------------------------------------------------------------
+
+    private fun detectSmartStreamIndex(usages: List<Int>? = null): Int {
+        val mode = audioManager.mode
+        if (mode == AudioManager.MODE_IN_CALL ||
+            mode == AudioManager.MODE_IN_COMMUNICATION ||
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && mode == AudioManager.MODE_CALL_SCREENING)
+        ) {
+            return INDEX_CALL
+        }
+
+        val activeUsages = usages ?: activePlaybackUsages()
+        if (activeUsages.any {
+                it == AudioAttributes.USAGE_VOICE_COMMUNICATION ||
+                    it == AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING
+            }
+        ) {
+            return INDEX_CALL
+        }
+        if (mode == AudioManager.MODE_RINGTONE ||
+            activeUsages.any { it == AudioAttributes.USAGE_NOTIFICATION_RINGTONE }
+        ) {
+            return INDEX_RING
+        }
+        if (activeUsages.any { it == AudioAttributes.USAGE_ALARM }) {
+            return INDEX_ALARM
+        }
+        if (audioManager.isMusicActive || activeUsages.any { usage ->
+                usage == AudioAttributes.USAGE_MEDIA ||
+                    usage == AudioAttributes.USAGE_GAME ||
+                    (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && usage == AudioAttributes.USAGE_ASSISTANT)
+            }
+        ) {
+            return INDEX_MEDIA
+        }
+
+        // Default to Media when idle/paused/buffering so YouTube volume works immediately.
+        return INDEX_MEDIA
+    }
+
+    private fun activePlaybackUsages(): List<Int> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return emptyList()
+        return activePlaybackUsagesO()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun activePlaybackUsagesO(): List<Int> {
+        return try {
+            audioManager.activePlaybackConfigurations.mapNotNull { it.audioAttributes?.usage }
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
+    private fun resolveStreamForInteraction() {
+        val mode = audioManager.mode
+        val liveCallOrRing = when {
+            mode == AudioManager.MODE_IN_CALL ||
+                mode == AudioManager.MODE_IN_COMMUNICATION ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && mode == AudioManager.MODE_CALL_SCREENING) -> INDEX_CALL
+            mode == AudioManager.MODE_RINGTONE -> INDEX_RING
+            else -> -1
+        }
+        if (liveCallOrRing != -1) {
+            handler.removeCallbacks(clearManualLockRunnable)
+            manualLockActive = false
+            if (activeStreamIndex != liveCallOrRing) {
+                activeStreamIndex = liveCallOrRing
+                dragLastSentStep = -1
+                syncAllUi(currentPercent(activeStream), immediate = true)
+            }
+            return
+        }
+
+        if (manualLockActive) {
+            refreshManualLockTimer()
+            return
+        }
+
+        val detected = detectSmartStreamIndex()
+        if (detected != activeStreamIndex) {
+            activeStreamIndex = detected
+            dragLastSentStep = -1
+            syncAllUi(currentPercent(activeStream), immediate = true)
+        }
+    }
+
+    private fun refreshManualLockTimer() {
+        handler.removeCallbacks(clearManualLockRunnable)
+        handler.postDelayed(clearManualLockRunnable, MANUAL_LOCK_MS)
+    }
+
+    // ------------------------------------------------------------------
+    // Squircle Edge Handle: Direct UP/DOWN Scrub, Tap to Open, Hold to Move
     // ------------------------------------------------------------------
 
     @SuppressLint("ClickableViewAccessibility")
@@ -248,11 +393,12 @@ class OverlayController(
                 MotionEvent.ACTION_DOWN -> {
                     wakeHandle()
                     edgeAnimator?.cancel()
-                    autoFocusMediaIfActive()
+                    resolveStreamForInteraction()
                     startX = params.x
                     startY = params.y
                     startRawX = event.rawX
                     startRawY = event.rawY
+                    dragLastSentStep = audioManager.getStreamVolume(activeStream)
                     startPercent = currentPercent(activeStream)
                     hasMoved = false
                     isRepositionMode = false
@@ -277,26 +423,23 @@ class OverlayController(
                         updateSafely(v, params)
                         if (panel != null) positionPanel()
                     } else if (hasMoved) {
-                        // Direct vertical drag: UP = louder (+), DOWN = quieter (-)
                         val totalDragPx = dp(140f).toFloat()
                         val fractionDelta = -dy / totalDragPx
-                        val target = (startPercent + fractionDelta * 100f).coerceIn(0f, 100f)
-                        setPercent(target)
-                        showHud("$activeStreamName: ${target.roundToInt()}%")
+                        val targetPercent = (startPercent + fractionDelta * 100f).coerceIn(0f, 100f)
+                        setPercentDuringDrag(targetPercent, showFeedbackHud = true)
                     }
                     true
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     handler.removeCallbacks(longPressRunnable)
+                    dragLastSentStep = -1
                     if (isRepositionMode) {
                         isRepositionMode = false
                         v.background = ContextCompat.getDrawable(context, R.drawable.handle_background)
                         snapToEdge(v, params)
                     } else if (!hasMoved && event.actionMasked == MotionEvent.ACTION_UP) {
                         togglePanel()
-                    } else {
-                        lastDispatchedStep = audioManager.getStreamVolume(activeStream)
                     }
                     resetIdleTimer()
                     scheduleHideHud()
@@ -338,64 +481,77 @@ class OverlayController(
     }
 
     // ------------------------------------------------------------------
-    // Rotated Vertical Volume Slider Panel
+    // Vertical Volume Slider Panel
     // ------------------------------------------------------------------
 
     @SuppressLint("ClickableViewAccessibility")
     private fun openPanel() {
         if (panel != null) return
-        val view = inflater.inflate(R.layout.volume_vertical_panel, null)
+        resolveStreamForInteraction()
 
+        val view = inflater.inflate(R.layout.volume_vertical_panel, null)
         val btnStream = view.findViewById<View>(R.id.btn_stream_icon)
         val textStreamIcon = view.findViewById<TextView>(R.id.text_stream_icon)
+        val textStreamLabel = view.findViewById<TextView>(R.id.text_stream_label)
         val trackFrame = view.findViewById<FrameLayout>(R.id.vertical_track_frame)
         val progressFill = view.findViewById<View>(R.id.vertical_progress_fill)
         val textPercent = view.findViewById<TextView>(R.id.text_percent)
 
-        autoFocusMediaIfActive()
-
-        textStreamIcon.text = activeStreamIcon
         val current = currentPercent(activeStream)
-        updateTrackHeight(progressFill, current)
+        textStreamIcon.text = activeStreamIcon
+        textStreamLabel.text = activeStreamName
+        updateTrackHeight(progressFill, trackFrame, current)
         textPercent.text = "${current.roundToInt()}%"
 
-        // Stream button opens popup
         btnStream.setOnClickListener {
             resetAutoDismissPanel()
+            if (manualLockActive) refreshManualLockTimer()
             togglePopup()
         }
 
-        // Scrubbing across the entire vertical panel: UP = louder, DOWN = quieter
+        var isScrubbingPanel = false
         val handlePanelScrub: (View, MotionEvent) -> Boolean = { _, event ->
-            resetAutoDismissPanel()
-            val btnLocation = IntArray(2)
-            btnStream.getLocationOnScreen(btnLocation)
-            val btnRect = Rect(
-                btnLocation[0],
-                btnLocation[1],
-                btnLocation[0] + btnStream.width,
-                btnLocation[1] + btnStream.height,
-            )
-            // If touch is on the stream icon button, let the button receive the click event!
-            if (btnRect.contains(event.rawX.roundToInt(), event.rawY.roundToInt())) {
-                false
+            if (event.actionMasked == MotionEvent.ACTION_OUTSIDE) {
+                if (popup == null) closePanel()
+                true
             } else {
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                        val location = IntArray(2)
-                        trackFrame.getLocationOnScreen(location)
-                        val trackTop = location[1].toFloat()
-                        val trackH = trackFrame.height.takeIf { it > 0 }?.toFloat() ?: dp(104f).toFloat()
-                        val fraction = (1f - ((event.rawY - trackTop) / trackH)).coerceIn(0f, 1f)
-                        val percent = fraction * 100f
-                        setPercent(percent)
-                        true
+                resetAutoDismissPanel()
+                val btnLocation = IntArray(2)
+                btnStream.getLocationOnScreen(btnLocation)
+                val btnRect = Rect(
+                    btnLocation[0],
+                    btnLocation[1],
+                    btnLocation[0] + btnStream.width,
+                    btnLocation[1] + btnStream.height,
+                )
+
+                if (event.actionMasked == MotionEvent.ACTION_DOWN &&
+                    btnRect.contains(event.rawX.roundToInt(), event.rawY.roundToInt())
+                ) {
+                    isScrubbingPanel = false
+                    false
+                } else {
+                    when (event.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {
+                            isScrubbingPanel = true
+                            resolveStreamForInteraction()
+                            dragLastSentStep = audioManager.getStreamVolume(activeStream)
+                            scrubPanelAt(trackFrame, event.rawY)
+                            true
+                        }
+                        MotionEvent.ACTION_MOVE -> {
+                            if (isScrubbingPanel) {
+                                scrubPanelAt(trackFrame, event.rawY)
+                            }
+                            true
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            isScrubbingPanel = false
+                            dragLastSentStep = -1
+                            true
+                        }
+                        else -> true
                     }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        lastDispatchedStep = audioManager.getStreamVolume(activeStream)
-                        true
-                    }
-                    else -> true
                 }
             }
         }
@@ -405,6 +561,7 @@ class OverlayController(
         val params = overlayParams().apply {
             width = panelWidth
             height = panelHeight
+            flags = flags or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
         }
         panelParams = params
         positionPanel()
@@ -418,6 +575,15 @@ class OverlayController(
             Log.e(TAG, "Failed to add panel: ${e.message}")
             panelParams = null
         }
+    }
+
+    private fun scrubPanelAt(trackFrame: FrameLayout, rawY: Float) {
+        val location = IntArray(2)
+        trackFrame.getLocationOnScreen(location)
+        val trackTop = location[1].toFloat()
+        val trackH = trackFrame.height.takeIf { it > 0 }?.toFloat() ?: trackHeightPx.toFloat()
+        val fraction = (1f - ((rawY - trackTop) / trackH)).coerceIn(0f, 1f)
+        setPercentDuringDrag(fraction * 100f, showFeedbackHud = false)
     }
 
     private fun closePanel() {
@@ -448,47 +614,89 @@ class OverlayController(
     }
 
     // ------------------------------------------------------------------
-    // Stream Selection Pop-Up
+    // Stream Selection Pop-Up (Auto + 5 Profiles)
     // ------------------------------------------------------------------
 
     private fun togglePopup() {
         if (popup != null) closePopup() else openPopup()
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun openPopup() {
         if (popup != null || panel == null) return
         val view = inflater.inflate(R.layout.stream_popup, null)
 
-        val itemIds = intArrayOf(
+        view.findViewById<View>(R.id.pop_opt_auto).setOnClickListener {
+            enableAutoMode()
+            closePopup()
+            resetAutoDismissPanel()
+        }
+
+        val streamOptionIds = intArrayOf(
             R.id.pop_opt_media,
             R.id.pop_opt_ring,
             R.id.pop_opt_notify,
+            R.id.pop_opt_call,
             R.id.pop_opt_alarm,
         )
 
-        for (i in itemIds.indices) {
-            view.findViewById<View>(itemIds[i]).setOnClickListener {
-                activeStreamIndex = i
-                lastDispatchedStep = -1
-                val current = currentPercent(activeStream)
-                syncPanelUi(current)
-                onVolumeChanged(current.roundToInt(), activeStreamName)
-                showHud("$activeStreamName: ${current.roundToInt()}%")
+        for (i in streamOptionIds.indices) {
+            view.findViewById<View>(streamOptionIds[i]).setOnClickListener {
+                selectStreamManual(i)
                 closePopup()
                 resetAutoDismissPanel()
             }
         }
 
-        val params = overlayParams().apply { width = popupWidth }
+        view.setOnTouchListener { _, event ->
+            if (event.actionMasked == MotionEvent.ACTION_OUTSIDE) {
+                closePopup()
+                true
+            } else {
+                false
+            }
+        }
+
+        val params = overlayParams().apply {
+            width = popupWidth
+            flags = flags or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+        }
         popupParams = params
+        popup = view
+        syncPopupHighlight()
         positionPopup()
 
         try {
             windowManager.addView(view, params)
-            popup = view
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add popup: ${e.message}")
+            popup = null
             popupParams = null
+        }
+    }
+
+    private fun syncPopupHighlight() {
+        val view = popup ?: return
+        val allIds = intArrayOf(
+            R.id.pop_opt_auto,
+            R.id.pop_opt_media,
+            R.id.pop_opt_ring,
+            R.id.pop_opt_notify,
+            R.id.pop_opt_call,
+            R.id.pop_opt_alarm,
+        )
+        val activeRowIndex = if (!manualLockActive) 0 else activeStreamIndex + 1
+        val activeTextColor = ContextCompat.getColor(context, R.color.overlay_option_active_text)
+        val normalTextColor = ContextCompat.getColor(context, R.color.text_primary)
+
+        for (i in allIds.indices) {
+            val row = view.findViewById<TextView>(allIds[i]) ?: continue
+            val isSelected = i == activeRowIndex
+            row.setBackgroundResource(
+                if (isSelected) R.drawable.stream_option_active_background
+                else R.drawable.stream_option_background,
+            )
+            row.setTextColor(if (isSelected) activeTextColor else normalTextColor)
         }
     }
 
@@ -502,7 +710,7 @@ class OverlayController(
     private fun positionPopup() {
         val params = popupParams ?: return
         val pParams = panelParams ?: return
-        val (width, _) = screenSize()
+        val (width, height) = screenSize()
 
         val isLeft = pParams.x < width / 2
         val candidateX = if (isLeft) {
@@ -510,8 +718,9 @@ class OverlayController(
         } else {
             pParams.x - popupWidth - edgeMargin
         }
+        val estimatedHeight = popup?.height?.takeIf { it > 0 } ?: dp(300f)
         params.x = candidateX.coerceIn(0, (width - popupWidth).coerceAtLeast(0))
-        params.y = pParams.y
+        params.y = pParams.y.coerceIn(0, (height - estimatedHeight).coerceAtLeast(0))
         popup?.let { updateSafely(it, params) }
     }
 
@@ -537,9 +746,10 @@ class OverlayController(
         val hudP = hudParams
         if (hParams != null && hudP != null) {
             val (width, height) = screenSize()
+            val hudEstWidth = hud?.width?.takeIf { it > 0 } ?: dp(164f)
             val isLeft = hParams.x + handleWidth / 2 < width / 2
-            val candidateX = if (isLeft) hParams.x + handleWidth + edgeMargin else hParams.x - dp(120f) - edgeMargin
-            hudP.x = candidateX.coerceIn(0, (width - dp(120f)).coerceAtLeast(0))
+            val candidateX = if (isLeft) hParams.x + handleWidth + edgeMargin else hParams.x - hudEstWidth - edgeMargin
+            hudP.x = candidateX.coerceIn(0, (width - hudEstWidth).coerceAtLeast(0))
             hudP.y = (hParams.y + handleHeight / 2 - dp(18f)).coerceIn(0, (height - dp(36f)).coerceAtLeast(0))
             hud?.let { updateSafely(it, hudP) }
         }
@@ -551,69 +761,146 @@ class OverlayController(
     }
 
     // ------------------------------------------------------------------
-    // Volume Control & DND Protection (Zero-Lag Throttled IPC)
+    // Real Hardware Volume Control, Read-Back Verification & DND Guard
     // ------------------------------------------------------------------
 
-    private var lastDispatchedStep = -1
-    private var lastDispatchedStream = -1
-
-    private fun setPercent(percent: Float) {
-        val clamped = percent.coerceIn(0f, 100f)
-        val max = audioManager.getStreamMaxVolume(activeStream)
+    private fun setPercentDuringDrag(percent: Float, showFeedbackHud: Boolean) {
+        val stream = activeStream
+        val max = streamMax(stream)
         if (max <= 0) return
-        val target = ((clamped / 100f) * max).roundToInt().coerceIn(0, max)
+        val targetStep = percentToStep(stream, percent)
 
-        // PERFORMANCE GUARD: Prevent 90Hz/120Hz Binder IPC flood to system_server
-        // Only invoke audioManager.setStreamVolume and onVolumeChanged when the actual volume step changes!
-        if (target != lastDispatchedStep || activeStream != lastDispatchedStream) {
-            lastDispatchedStep = target
-            lastDispatchedStream = activeStream
-            // Trap Guard: SecurityException on DND/Zen mode
-            try {
-                if (target > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && audioManager.isStreamMute(activeStream)) {
-                    audioManager.adjustStreamVolume(activeStream, AudioManager.ADJUST_UNMUTE, 0)
-                }
-                audioManager.setStreamVolume(activeStream, target, 0)
-            } catch (e: SecurityException) {
-                Log.w(TAG, "DND prevented setting volume: ${e.message}")
+        // Dispatch Binder IPC only when the discrete integer hardware step changes.
+        if (targetStep != dragLastSentStep) {
+            applyHardwareStep(targetStep, isDiscreteStep = false, showFeedbackHud = showFeedbackHud)
+        } else {
+            val livePct = currentPercent(stream)
+            syncPanelUi(livePct)
+            if (showFeedbackHud) {
+                showHud("$activeStreamName: ${livePct.roundToInt()}%")
             }
-            onVolumeChanged(clamped.roundToInt(), activeStreamName)
+        }
+    }
+
+    private fun applyHardwareStep(
+        targetStep: Int,
+        isDiscreteStep: Boolean,
+        showFeedbackHud: Boolean,
+    ) {
+        val stream = activeStream
+        val max = streamMax(stream)
+        if (max <= 0) return
+        val min = streamMin(stream)
+        val clampedStep = targetStep.coerceIn(min, max)
+        val before = audioManager.getStreamVolume(stream)
+        var dndBlocked = false
+
+        try {
+            val wasMuted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && audioManager.isStreamMute(stream)
+            if (clampedStep > 0 && wasMuted) {
+                try {
+                    audioManager.adjustStreamVolume(stream, AudioManager.ADJUST_UNMUTE, 0)
+                } catch (_: SecurityException) {
+                    dndBlocked = true
+                }
+            }
+            if (!dndBlocked) {
+                audioManager.setStreamVolume(stream, clampedStep, 0)
+            }
+        } catch (e: SecurityException) {
+            dndBlocked = true
+            Log.w(TAG, "DND prevented setting volume for $activeStreamName: ${e.message}")
         }
 
-        syncPanelUi(clamped)
+        // Always read back the true OS volume rather than echoing optimistic targets.
+        var actual = audioManager.getStreamVolume(stream)
+        if (!dndBlocked && stream == AudioManager.STREAM_MUSIC && clampedStep > before && actual < clampedStep) {
+            try {
+                audioManager.setStreamVolume(stream, clampedStep, AudioManager.FLAG_SHOW_UI)
+                actual = audioManager.getStreamVolume(stream)
+            } catch (_: SecurityException) {
+                dndBlocked = true
+            }
+        }
+
+        val actualPct = stepToPercent(actual, max)
+        dragLastSentStep = if (dndBlocked) -1 else actual
+        syncAllUi(actualPct, immediate = isDiscreteStep || dndBlocked)
+
+        if (dndBlocked) {
+            showHud(context.getString(R.string.hud_dnd_blocked))
+            scheduleHideHud()
+        } else if (showFeedbackHud) {
+            showHud("$activeStreamName: ${actualPct.roundToInt()}%")
+            scheduleHideHud()
+        }
+    }
+
+    private fun syncAllUi(percent: Float, immediate: Boolean) {
+        syncPanelUi(percent)
+        syncPopupHighlight()
+        onVolumeChanged(
+            percent.roundToInt(),
+            activeStreamIndex,
+            activeStreamName,
+            activeStreamIcon,
+            manualLockActive,
+            immediate,
+        )
     }
 
     private fun syncPanelUi(percent: Float) {
         panel?.let { p ->
             p.findViewById<TextView>(R.id.text_stream_icon)?.text = activeStreamIcon
+            p.findViewById<TextView>(R.id.text_stream_label)?.text = activeStreamName
             p.findViewById<TextView>(R.id.text_percent)?.text = "${percent.roundToInt()}%"
+            val trackFrame = p.findViewById<FrameLayout>(R.id.vertical_track_frame)
             val fill = p.findViewById<View>(R.id.vertical_progress_fill)
-            updateTrackHeight(fill, percent)
+            updateTrackHeight(fill, trackFrame, percent)
         }
     }
 
-    private fun updateTrackHeight(fill: View?, percent: Float) {
+    private fun updateTrackHeight(fill: View?, trackFrame: FrameLayout?, percent: Float) {
         if (fill == null) return
-        val trackTotalHeight = dp(104f)
+        val trackTotalHeight = trackFrame?.height?.takeIf { it > 0 } ?: trackHeightPx
         val targetHeight = (trackTotalHeight * (percent.coerceIn(0f, 100f) / 100f)).roundToInt()
         val layoutParams = fill.layoutParams
         layoutParams.height = targetHeight
         fill.layoutParams = layoutParams
     }
 
-    private fun currentPercent(stream: Int): Float {
-        val max = audioManager.getStreamMaxVolume(stream)
-        if (max <= 0) return 0f
-        return (audioManager.getStreamVolume(stream) * 100f / max).coerceIn(0f, 100f)
+    private fun streamMin(stream: Int): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                return audioManager.getStreamMinVolume(stream).coerceAtLeast(0)
+            } catch (_: Throwable) {}
+        }
+        return 0
     }
 
+    private fun streamMax(stream: Int): Int = audioManager.getStreamMaxVolume(stream).coerceAtLeast(0)
+
+    private fun stepToPercent(step: Int, max: Int): Float =
+        if (max <= 0) 0f else (step * 100f / max).coerceIn(0f, 100f)
+
+    private fun percentToStep(stream: Int, percent: Float): Int {
+        val min = streamMin(stream)
+        val max = streamMax(stream)
+        if (max <= min) return max
+        val span = max - min
+        return (min + ((percent.coerceIn(0f, 100f) / 100f) * span).roundToInt()).coerceIn(min, max)
+    }
+
+    private fun currentPercent(stream: Int): Float =
+        stepToPercent(audioManager.getStreamVolume(stream), streamMax(stream))
+
     // ------------------------------------------------------------------
-    // Timers & Helper Utilities
+    // Timers, Broadcast Receivers & Playback Callback
     // ------------------------------------------------------------------
 
     private fun resetAutoDismissPanel() {
         handler.removeCallbacks(autoDismissPanelRunnable)
-        handler.postDelayed(autoDismissPanelRunnable, 4000)
+        handler.postDelayed(autoDismissPanelRunnable, AUTO_DISMISS_PANEL_MS)
     }
 
     private fun resetIdleTimer() {
@@ -627,6 +914,7 @@ class OverlayController(
     }
 
     private fun registerReceivers() {
+        if (receiversRegistered) return
         try {
             val configFilter = IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED)
             val volFilter = IntentFilter("android.media.VOLUME_CHANGED_ACTION")
@@ -637,12 +925,55 @@ class OverlayController(
                 context.registerReceiver(configReceiver, configFilter)
                 context.registerReceiver(volumeChangeReceiver, volFilter)
             }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                registerPlaybackCallbackO()
+            }
+            receiversRegistered = true
         } catch (_: Exception) {}
     }
 
     private fun unregisterReceivers() {
+        if (!receiversRegistered) return
+        receiversRegistered = false
         try { context.unregisterReceiver(configReceiver) } catch (_: Exception) {}
         try { context.unregisterReceiver(volumeChangeReceiver) } catch (_: Exception) {}
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            unregisterPlaybackCallbackO()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun registerPlaybackCallbackO() {
+        val cb = object : AudioManager.AudioPlaybackCallback() {
+            override fun onPlaybackConfigChanged(configs: List<AudioPlaybackConfiguration>) {
+                val usages = configs.mapNotNull { it.audioAttributes?.usage }
+                val detected = detectSmartStreamIndex(usages)
+                if (detected == INDEX_CALL || detected == INDEX_RING) {
+                    handler.removeCallbacks(clearManualLockRunnable)
+                    manualLockActive = false
+                    if (activeStreamIndex != detected) {
+                        activeStreamIndex = detected
+                        dragLastSentStep = -1
+                        syncAllUi(currentPercent(activeStream), immediate = true)
+                    }
+                } else if (!manualLockActive && detected != activeStreamIndex) {
+                    activeStreamIndex = detected
+                    dragLastSentStep = -1
+                    syncAllUi(currentPercent(activeStream), immediate = true)
+                }
+            }
+        }
+        playbackCallback = cb
+        audioManager.registerAudioPlaybackCallback(cb, handler)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun unregisterPlaybackCallbackO() {
+        val cb = playbackCallback as? AudioManager.AudioPlaybackCallback ?: return
+        try {
+            audioManager.unregisterAudioPlaybackCallback(cb)
+        } catch (_: Exception) {}
+        playbackCallback = null
     }
 
     private fun overlayParams(): WindowManager.LayoutParams {
@@ -664,7 +995,6 @@ class OverlayController(
     }
 
     private fun screenSize(): Pair<Int, Int> {
-        // 1. Primary: DisplayMetrics from context resources (reliable, never throws in any context or multi-window)
         try {
             val dm = context.resources.displayMetrics
             if (dm.widthPixels > 0 && dm.heightPixels > 0) {
@@ -672,7 +1002,6 @@ class OverlayController(
             }
         } catch (_: Throwable) {}
 
-        // 2. Secondary: defaultDisplay.getRealSize
         try {
             @Suppress("DEPRECATION")
             val display = windowManager.defaultDisplay
@@ -686,7 +1015,6 @@ class OverlayController(
             }
         } catch (_: Throwable) {}
 
-        // 3. Tertiary: WindowMetrics on Android 11+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
                 val bounds = windowManager.currentWindowMetrics.bounds
@@ -696,7 +1024,6 @@ class OverlayController(
             } catch (_: Throwable) {}
         }
 
-        // 4. Safe hardware fallback for Realme 6 (1080 x 2400)
         return 1080 to 2400
     }
 
@@ -718,5 +1045,12 @@ class OverlayController(
 
     private companion object {
         const val TAG = "OverlayController"
+        const val INDEX_MEDIA = 0
+        const val INDEX_RING = 1
+        const val INDEX_NOTIFY = 2
+        const val INDEX_CALL = 3
+        const val INDEX_ALARM = 4
+        const val MANUAL_LOCK_MS = 15_000L
+        const val AUTO_DISMISS_PANEL_MS = 6_000L
     }
 }

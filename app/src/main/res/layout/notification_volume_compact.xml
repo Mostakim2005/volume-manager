@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RemoteViews-safe widgets only: LinearLayout, TextView, ProgressBar. Compact (<= 48dp). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/notif_compact_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="4dp"
+    android:paddingTop="4dp"
+    android:paddingEnd="4dp"
+    android:paddingBottom="4dp">
+
+    <!-- Stream Cycle Pill -->
+    <LinearLayout
+        android:id="@+id/notif_compact_stream"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:background="@drawable/notif_pill_background"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <TextView
+            android:id="@+id/notif_compact_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:textColor="@color/notif_text_primary"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Volume DOWN Button -->
+    <TextView
+        android:id="@+id/btn_compact_down"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/notif_btn_background"
+        android:contentDescription="@string/notif_volume_down_desc"
+        android:gravity="center"
+        android:text="−"
+        android:textColor="@color/notif_btn_text"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <!-- Volume Progress Bar -->
+    <ProgressBar
+        android:id="@+id/notif_compact_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="0dp"
+        android:layout_height="10dp"
+        android:layout_marginStart="6dp"
+        android:layout_marginEnd="6dp"
+        android:layout_weight="1"
+        android:indeterminate="false"
+        android:max="100"
+        android:progress="50"
+        android:progressDrawable="@drawable/seek_progress_green" />
+
+    <!-- Volume UP Button -->
+    <TextView
+        android:id="@+id/btn_compact_up"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="@drawable/notif_btn_background"
+        android:contentDescription="@string/notif_volume_up_desc"
+        android:gravity="center"
+        android:text="+"
+        android:textColor="@color/notif_btn_text"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <!-- Open Floating Vertical Panel -->
+    <TextView
+        android:id="@+id/btn_compact_panel"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/notif_pill_background"
+        android:contentDescription="@string/notif_open_panel_desc"
+        android:gravity="center"
+        android:text="🎚️"
+        android:textSize="14sp" />
+
+</LinearLayout>

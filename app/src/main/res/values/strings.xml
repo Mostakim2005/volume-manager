@@ -6,7 +6,14 @@
     <string name="notification_channel_name">Volume overlay service</string>
     <string name="notification_channel_desc">Silent notification that keeps the edge volume dock alive.</string>
     <string name="notification_title">Volume Manager</string>
-    <string name="notif_status">%1$s volume: %2$d%% ▾</string>
+    <string name="notif_status_compact">%1$s %2$d%%</string>
+    <string name="notif_status_expanded">%1$s %2$s • %3$d%% (%4$s)</string>
+    <string name="notif_mode_auto">Auto</string>
+    <string name="notif_mode_manual">Manual</string>
+    <string name="notif_open_panel">🎚️ Panel</string>
+    <string name="notif_open_panel_desc">Open floating volume panel</string>
+    <string name="notif_volume_down_desc">Decrease volume</string>
+    <string name="notif_volume_up_desc">Increase volume</string>
     <string name="notif_permission_needed">Tap to grant overlay permission</string>
     <string name="notif_media_down">Volume icon</string>
 
@@ -22,11 +29,14 @@
     <string name="tip_system_overlay_desc">Android shows a persistent system notification whenever an overlay is active. To hide it: press and hold that notification in the shade, tap Turn off notifications, and switch off \"Display over other apps\".</string>
     <string name="status_running">Active • Running</string>
     <string name="status_stopped">Stopped</string>
+    <string name="status_setup_required">Setup Required</string>
     <string name="status_granted">Granted</string>
     <string name="status_required">Setup</string>
     <string name="btn_overlay">Display over other apps</string>
     <string name="btn_notifications">Notification permission</string>
     <string name="btn_battery_optimization">Ignore battery optimizations</string>
+    <string name="btn_dnd_access">Do Not Disturb access (optional)</string>
+    <string name="dnd_access_desc">Allows changing Ring &amp; Notify volume while in Silent or DND</string>
     <string name="btn_battery_management">App Battery Management (Realme)</string>
     <string name="btn_auto_launch">Auto-launch apps (Realme)</string>
     <string name="btn_start">Start overlay service</string>
@@ -35,9 +45,12 @@
 
     <!-- Floating overlay -->
     <string name="handle_content_description">Drag up or down for volume, tap to toggle vertical slider, hold to move</string>
+    <string name="stream_auto_short">Auto</string>
     <string name="stream_music_short">Media</string>
     <string name="stream_ring_short">Ring</string>
-    <string name="stream_alarm_short">Alarm</string>
     <string name="stream_notify_short">Notify</string>
+    <string name="stream_call_short">Call</string>
+    <string name="stream_alarm_short">Alarm</string>
+    <string name="hud_dnd_blocked">Blocked by DND</string>
     <string name="zero_percent" formatted="false">0%</string>
 </resources>

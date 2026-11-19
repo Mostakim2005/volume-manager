@@ -6,10 +6,11 @@
     <dimen name="handle_corner_radius">16dp</dimen>
 
     <!-- Rotated vertical volume panel -->
-    <dimen name="vertical_panel_width">54dp</dimen>
-    <dimen name="vertical_panel_height">192dp</dimen>
-    <dimen name="vertical_track_width">34dp</dimen>
-    <dimen name="vertical_track_height">104dp</dimen>
+    <dimen name="vertical_panel_width">80dp</dimen>
+    <dimen name="vertical_panel_height">228dp</dimen>
+    <dimen name="vertical_track_width">48dp</dimen>
+    <dimen name="vertical_track_height">124dp</dimen>
+    <dimen name="stream_popup_width">164dp</dimen>
 
     <!-- Notification and screen margins -->
     <dimen name="edge_margin">8dp</dimen>

@@ -10,6 +10,14 @@
     <color name="panel_background">#FAFAFD</color>
     <color name="handle_background">#FF7A6B</color>
 
+    <!-- Theme-adaptive overlay surface colors (Light Mode) -->
+    <color name="overlay_surface_bg">#FAFAFD</color>
+    <color name="overlay_surface_stroke">#E2E8F0</color>
+    <color name="overlay_track_bg">#E2E8F0</color>
+    <color name="overlay_option_bg">#F1F5F9</color>
+    <color name="overlay_option_active_bg">#FFF0EA</color>
+    <color name="overlay_option_active_text">#C2410C</color>
+
     <!-- Theme-adaptive notification colors (Light Mode) -->
     <color name="notif_text_primary">#0F172A</color>
     <color name="notif_text_secondary">#64748B</color>
@@ -17,6 +25,9 @@
     <color name="notif_btn_bg">#E2E8F0</color>
     <color name="notif_btn_stroke">#CBD5E1</color>
     <color name="notif_btn_text">#0F172A</color>
+    <color name="notif_chip_active_bg">#D9480F</color>
+    <color name="notif_chip_active_text">#FFFFFF</color>
+    <color name="notif_accent_text">#C2410C</color>
     <color name="text_primary">#0F172A</color>
     <color name="text_secondary">#64748B</color>
     <color name="card_background">#FFFFFF</color>

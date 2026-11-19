@@ -2,6 +2,7 @@ package com.volumemanager.util
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,9 +13,9 @@ import android.provider.Settings
 import androidx.core.content.ContextCompat
 
 /**
- * Thin wrappers around the three runtime "permissions" the utility needs.
- * SYSTEM_ALERT_WINDOW and battery-optimization exemption are special: they are
- * granted through Settings screens, not the normal runtime permission dialog.
+ * Thin wrappers around the permissions the utility needs.
+ * SYSTEM_ALERT_WINDOW, battery-optimization exemption, and Notification Policy
+ * access are granted through Settings screens rather than standard dialogs.
  */
 object Permissions {
 
@@ -35,6 +36,13 @@ object Permissions {
         return powerManager.isIgnoringBatteryOptimizations(context.packageName)
     }
 
+    fun hasNotificationPolicyAccess(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        return notificationManager?.isNotificationPolicyAccessGranted == true
+    }
+
     /** Opens the Android "Display over other apps" screen for this package. */
     fun overlaySettingsIntent(context: Context): Intent =
         Intent(
@@ -49,4 +57,12 @@ object Permissions {
             Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
             Uri.parse("package:${context.packageName}"),
         )
+
+    /** Opens the system Do Not Disturb access screen. */
+    fun notificationPolicyAccessIntent(): Intent =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+        } else {
+            Intent(Settings.ACTION_SOUND_SETTINGS)
+        }
 }

@@ -3,8 +3,8 @@
     <item android:id="@android:id/background">
         <shape android:shape="rectangle">
             <solid android:color="@color/notif_track_bg" />
-            <corners android:radius="5dp" />
-            <size android:height="10dp" />
+            <corners android:radius="7dp" />
+            <size android:height="14dp" />
         </shape>
     </item>
     <item android:id="@android:id/progress">
@@ -14,8 +14,8 @@
                     android:angle="0"
                     android:startColor="#FF7A6B"
                     android:endColor="#F4511E" />
-                <corners android:radius="5dp" />
-                <size android:height="10dp" />
+                <corners android:radius="7dp" />
+                <size android:height="14dp" />
             </shape>
         </clip>
     </item>
