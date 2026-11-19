@@ -42,6 +42,16 @@
     <string name="btn_start">Start overlay service</string>
     <string name="btn_stop">Stop overlay service</string>
     <string name="status_heading">Permission status</string>
+    <string name="card_crash_title">Last Crash Detected</string>
+    <string name="btn_copy_crash">Copy Crash</string>
+    <string name="btn_clear_crash">Dismiss</string>
+    <string name="card_diagnostics_title">Diagnostics &amp; Bug Report</string>
+    <string name="card_diagnostics_desc">Offline report with device info, audio stream levels, permissions, and recent logs. Copy or share to debug issues.</string>
+    <string name="btn_copy_report">Copy Report</string>
+    <string name="btn_share_report">Share Report</string>
+    <string name="toast_report_copied">Bug report copied to clipboard</string>
+    <string name="toast_crash_copied">Crash log copied to clipboard</string>
+    <string name="share_report_title">Share Volume Manager Bug Report</string>
 
     <!-- Floating overlay -->
     <string name="handle_content_description">Drag up or down for volume, tap to toggle vertical slider, hold to move</string>

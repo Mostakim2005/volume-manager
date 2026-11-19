@@ -55,6 +55,12 @@
 * **Status:** `[DECIDED BY: AGENT]`
 * **Anchors:** `OverlayController -> show`, `togglePanel`, `openPanelFromNotification`.
 
+### [DECISION: Pre-Flight RemoteViews Validation, Offline Crash Reporter & Release Lint Gate] | Aliases: RemoteViews preflight, stock fallback, crash reporter, release lint gate
+> **1-Line Summary:** Validates custom `RemoteViews` in-process with automatic stock notification fallback, records uncaught crashes offline without adding `INTERNET`, and gates release APK builds on `lintDebug`.
+* **Why:** A single `RemoteViewLayout` XML mistake in `v1.3.1` slipped past `release.yml` (which omitted `lintDebug`) and triggered fatal `RemoteServiceException` crash loops on Android 11 without any visible stack trace on the handset.
+* **Status:** `[DECIDED BY: HUMAN]`
+* **Anchors:** `VolumeManagerApp -> onCreate`; `CrashReporter -> install`, `buildFullBugReport`; `OverlayVolumeService -> safeBuildNotification`, `validateRemoteViews`, `buildStockFallbackNotification`; `.github/workflows/release.yml`.
+
 ## 2. Traps
 
 ```mermaid
@@ -161,6 +167,6 @@ flowchart TD
 ## 3. Verification Gate
 
 ### [VERIFY: CI And Release Verified On GitHub] | Aliases: assembleDebug, lintDebug, tag release, arm64
-> **1-Line Summary:** The authoring machine has no JDK/SDK, so verification runs in GitHub Actions (`assembleDebug` + `lintDebug`), and releases require an explicit version tag.
+> **1-Line Summary:** The authoring machine has no JDK/SDK, so verification runs in GitHub Actions (`assembleDebug` + `lintDebug`), and releases require passing `lintDebug` before building signed APKs.
 * **CI status:** Runs `assembleDebug` + `lintDebug` on every push to `main`.
-* **Release status:** Triggered by annotated tags (e.g. `v1.3.3`) on explicit user instruction, compiling and publishing signed arm64-v8a APKs to GitHub Releases.
+* **Release status:** Triggered by annotated tags (e.g. `v1.4.0`) on explicit user instruction; runs `./gradlew lintDebug` as a mandatory gate before `assembleRelease`.

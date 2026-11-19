@@ -14,14 +14,18 @@ import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.widget.FrameLayout
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.volumemanager.overlay.OverlayController
+import com.volumemanager.util.CrashReporter
+import com.volumemanager.util.Permissions
 
 /**
  * Persistent foreground service hosting the floating volume overlay and
- * dual-state (compact + expanded 5-profile) notification controls.
+ * dual-state (compact + expanded 5-profile) notification controls with
+ * pre-flight RemoteViews validation and automatic stock fallback.
  */
 class OverlayVolumeService : Service() {
 
@@ -38,7 +42,7 @@ class OverlayVolumeService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val refreshNotification = Runnable {
-        notificationManager.notify(NOTIFICATION_ID, buildNotification())
+        postNotificationSafely()
     }
 
     override fun onCreate() {
@@ -51,15 +55,17 @@ class OverlayVolumeService : Service() {
         createNotificationChannel()
         currentStreamName = getString(R.string.stream_music_short)
         volumePercent = readMediaPercent()
+        permissionMissing = !Permissions.canDrawOverlays(this)
 
-        startForeground(NOTIFICATION_ID, buildNotification())
+        CrashReporter.logEvent(this, "SVC", "onCreate overlayPerm=${!permissionMissing}")
+        startForeground(NOTIFICATION_ID, safeBuildNotification())
 
         overlayController = OverlayController(
             context = this,
             audioManager = audioManager,
             onOverlayPermissionMissing = {
                 permissionMissing = true
-                notificationManager.notify(NOTIFICATION_ID, buildNotification())
+                postNotificationSafely()
                 Log.w(TAG, "Overlay permission missing")
             },
             onVolumeChanged = { percent, streamIndex, streamName, streamIcon, isManual, immediate ->
@@ -68,49 +74,57 @@ class OverlayVolumeService : Service() {
                 currentStreamName = streamName
                 currentStreamIcon = streamIcon
                 isManualMode = isManual
-                permissionMissing = false
+                permissionMissing = !Permissions.canDrawOverlays(this)
                 if (immediate) {
                     handler.removeCallbacks(refreshNotification)
-                    notificationManager.notify(NOTIFICATION_ID, buildNotification())
+                    postNotificationSafely()
                 } else {
                     scheduleNotificationRefresh()
                 }
             },
         )
         overlayController?.show()
-        overlayController?.syncCurrentState()
+        if (Permissions.canDrawOverlays(this)) {
+            overlayController?.syncCurrentState()
+        }
         Log.d(TAG, "Overlay volume service created")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_OPEN_PANEL -> {
-                handler.postDelayed({ overlayController?.openPanelFromNotification() }, 180)
+        try {
+            when (intent?.action) {
+                ACTION_OPEN_PANEL -> {
+                    handler.postDelayed({ overlayController?.openPanelFromNotification() }, 180)
+                }
+                ACTION_TOGGLE_PANEL, ACTION_TOGGLE_CHIP -> overlayController?.togglePanel()
+                ACTION_CYCLE_STREAM -> overlayController?.cycleStream()
+                ACTION_SELECT_STREAM -> {
+                    val idx = intent.getIntExtra(EXTRA_STREAM_INDEX, -1)
+                    if (idx >= 0) overlayController?.selectStreamManual(idx)
+                }
+                ACTION_AUTO_STREAM -> overlayController?.enableAutoMode()
+                ACTION_VOLUME_UP -> overlayController?.stepVolume(1)
+                ACTION_VOLUME_DOWN -> overlayController?.stepVolume(-1)
+                ACTION_STOP -> {
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                else -> overlayController?.show()
             }
-            ACTION_TOGGLE_PANEL, ACTION_TOGGLE_CHIP -> overlayController?.togglePanel()
-            ACTION_CYCLE_STREAM -> overlayController?.cycleStream()
-            ACTION_SELECT_STREAM -> {
-                val idx = intent.getIntExtra(EXTRA_STREAM_INDEX, -1)
-                if (idx >= 0) overlayController?.selectStreamManual(idx)
-            }
-            ACTION_AUTO_STREAM -> overlayController?.enableAutoMode()
-            ACTION_VOLUME_UP -> overlayController?.stepVolume(1)
-            ACTION_VOLUME_DOWN -> overlayController?.stepVolume(-1)
-            ACTION_STOP -> {
-                stopSelf()
-                return START_NOT_STICKY
-            }
-            else -> overlayController?.show()
+        } catch (e: Throwable) {
+            CrashReporter.recordError(this, "OverlayVolumeService.onStartCommand", e)
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
         isRunning = false
+        usingStockNotificationFallback = false
         onRunningStateChanged?.invoke(false)
         handler.removeCallbacksAndMessages(null)
         overlayController?.destroy()
         overlayController = null
+        CrashReporter.logEvent(this, "SVC", "onDestroy")
         Log.d(TAG, "Overlay volume service destroyed")
         super.onDestroy()
     }
@@ -120,6 +134,14 @@ class OverlayVolumeService : Service() {
     private fun scheduleNotificationRefresh() {
         handler.removeCallbacks(refreshNotification)
         handler.postDelayed(refreshNotification, 200)
+    }
+
+    private fun postNotificationSafely() {
+        try {
+            notificationManager.notify(NOTIFICATION_ID, safeBuildNotification())
+        } catch (e: Throwable) {
+            CrashReporter.recordError(this, "OverlayVolumeService.postNotification", e)
+        }
     }
 
     private fun readMediaPercent(): Int {
@@ -142,20 +164,33 @@ class OverlayVolumeService : Service() {
         }
     }
 
-    private fun buildNotification(): Notification {
+    private fun safeBuildNotification(): Notification {
+        val modeLabel = getString(if (isManualMode) R.string.notif_mode_manual else R.string.notif_mode_auto)
+        val fallbackStatus = if (permissionMissing) {
+            getString(R.string.notif_permission_needed)
+        } else {
+            getString(R.string.notif_status_expanded, currentStreamIcon, currentStreamName, volumePercent, modeLabel)
+        }
+        return try {
+            buildCustomNotification(modeLabel, fallbackStatus) ?: run {
+                usingStockNotificationFallback = true
+                buildStockFallbackNotification(fallbackStatus)
+            }
+        } catch (e: Throwable) {
+            CrashReporter.recordError(this, "OverlayVolumeService.safeBuildNotification", e)
+            usingStockNotificationFallback = true
+            buildStockFallbackNotification(fallbackStatus)
+        }
+    }
+
+    private fun buildCustomNotification(modeLabel: String, expandedStatus: String): Notification? {
         val compactViews = RemoteViews(packageName, R.layout.notification_volume_compact)
         val expandedViews = RemoteViews(packageName, R.layout.notification_volume_expanded)
 
-        val modeLabel = getString(if (isManualMode) R.string.notif_mode_manual else R.string.notif_mode_auto)
         val compactStatus = if (permissionMissing) {
             getString(R.string.notif_permission_needed)
         } else {
             getString(R.string.notif_status_compact, "$currentStreamIcon $currentStreamName", volumePercent)
-        }
-        val expandedStatus = if (permissionMissing) {
-            getString(R.string.notif_permission_needed)
-        } else {
-            getString(R.string.notif_status_expanded, currentStreamIcon, currentStreamName, volumePercent, modeLabel)
         }
 
         compactViews.setTextViewText(R.id.notif_compact_status, compactStatus)
@@ -165,15 +200,7 @@ class OverlayVolumeService : Service() {
         expandedViews.setProgressBar(R.id.notif_expanded_progress, 100, if (permissionMissing) 0 else volumePercent, false)
 
         if (permissionMissing) {
-            val settingsPending = PendingIntent.getActivity(
-                this,
-                0,
-                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
-                    data = android.net.Uri.parse("package:$packageName")
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                },
-                immutableFlags(),
-            )
+            val settingsPending = overlaySettingsPendingIntent()
             compactViews.setOnClickPendingIntent(R.id.notif_compact_root, settingsPending)
             expandedViews.setOnClickPendingIntent(R.id.notif_expanded_root, settingsPending)
         } else {
@@ -223,6 +250,11 @@ class OverlayVolumeService : Service() {
             }
         }
 
+        if (!validateRemoteViews(compactViews) || !validateRemoteViews(expandedViews)) {
+            return null
+        }
+
+        usingStockNotificationFallback = false
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_volume_small)
             .setContentTitle(getString(R.string.notification_title))
@@ -235,6 +267,49 @@ class OverlayVolumeService : Service() {
             .setCustomBigContentView(expandedViews)
             .build()
     }
+
+    private fun validateRemoteViews(views: RemoteViews): Boolean {
+        return try {
+            views.apply(applicationContext, FrameLayout(applicationContext))
+            true
+        } catch (e: Throwable) {
+            CrashReporter.recordError(this, "RemoteViews.apply preflight", e)
+            false
+        }
+    }
+
+    private fun buildStockFallbackNotification(statusText: String): Notification {
+        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_volume_small)
+            .setContentTitle(getString(R.string.notification_title))
+            .setContentText(statusText)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setCategory(Notification.CATEGORY_SERVICE)
+
+        if (permissionMissing) {
+            builder.setContentIntent(overlaySettingsPendingIntent())
+        } else {
+            builder
+                .setProgress(100, volumePercent, false)
+                .setContentIntent(panelActivityPendingIntent())
+                .addAction(0, "−", servicePendingIntent(ACTION_VOLUME_DOWN, 3))
+                .addAction(0, "+", servicePendingIntent(ACTION_VOLUME_UP, 4))
+                .addAction(0, "$currentStreamIcon $currentStreamName", servicePendingIntent(ACTION_CYCLE_STREAM, 2))
+        }
+        return builder.build()
+    }
+
+    private fun overlaySettingsPendingIntent(): PendingIntent =
+        PendingIntent.getActivity(
+            this,
+            0,
+            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                data = android.net.Uri.parse("package:$packageName")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            },
+            immutableFlags(),
+        )
 
     private fun panelActivityPendingIntent(): PendingIntent {
         val intent = Intent(this, PanelLaunchActivity::class.java).apply {
@@ -271,6 +346,10 @@ class OverlayVolumeService : Service() {
 
         @Volatile
         var isRunning: Boolean = false
+            private set
+
+        @Volatile
+        var usingStockNotificationFallback: Boolean = false
             private set
 
         @Volatile

@@ -22,13 +22,13 @@ flowchart TD
 ```
 
 ### [SUBSYSTEM: Foreground Service & Shade-Collapse Launcher] | Aliases: startForeground, START_STICKY, notification, PanelLaunchActivity
-> **1-Line Summary:** The service anchors the process, renders dual compact/expanded `DecoratedCustomViewStyle` notifications, and pairs with `PanelLaunchActivity` to collapse the shade before displaying overlays.
-* `onCreate()` sets `isRunning = true`, notifies `onRunningStateChanged`, creates the channel, calls `startForeground(NOTIFICATION_ID, ...)` immediately, builds `OverlayController`, calls `show()`, and calls `syncCurrentState()`.
-* `onStartCommand()` dispatches `ACTION_OPEN_PANEL` (180 ms delayed after shade collapse), `ACTION_TOGGLE_PANEL`, `ACTION_CYCLE_STREAM`, `ACTION_SELECT_STREAM`, `ACTION_AUTO_STREAM`, `ACTION_VOLUME_UP`, `ACTION_VOLUME_DOWN`, and `ACTION_STOP`.
-* `buildNotification()` builds separate `@RemoteView`-safe layouts (`notification_volume_compact.xml` and `notification_volume_expanded.xml`) attached with `NotificationCompat.DecoratedCustomViewStyle()`.
+> **1-Line Summary:** The service anchors the process, pre-validates dual compact/expanded `DecoratedCustomViewStyle` notifications with stock fallback, and pairs with `PanelLaunchActivity` to collapse the shade before displaying overlays.
+* `onCreate()` sets `isRunning = true`, notifies `onRunningStateChanged`, creates the channel, sets `permissionMissing = !Permissions.canDrawOverlays(this)`, calls `startForeground(NOTIFICATION_ID, safeBuildNotification())` immediately, builds `OverlayController`, calls `show()`, and calls `syncCurrentState()` when overlay permission is granted.
+* `onStartCommand()` catches unexpected `Throwable`s via `CrashReporter.recordError()` and dispatches `ACTION_OPEN_PANEL` (180 ms delayed after shade collapse), `ACTION_TOGGLE_PANEL`, `ACTION_CYCLE_STREAM`, `ACTION_SELECT_STREAM`, `ACTION_AUTO_STREAM`, `ACTION_VOLUME_UP`, `ACTION_VOLUME_DOWN`, and `ACTION_STOP`.
+* `safeBuildNotification()` runs `buildCustomNotification()`, validates both `RemoteViews` layouts via `validateRemoteViews()` (`RemoteViews.apply(...)` into an in-memory `FrameLayout`), and falls back automatically to `buildStockFallbackNotification()` if any inflation error occurs.
 * `PanelLaunchActivity` is an empty-task translucent `android.app.Activity` that causes SystemUI to collapse the notification shade natively on launch, forwards `ACTION_OPEN_PANEL` to `OverlayVolumeService`, and finishes immediately with animations suppressed.
-* `onDestroy()` clears `isRunning = false`, notifies listeners, cancels callbacks, and calls `controller.destroy()`.
-* Anchors: `OverlayVolumeService -> onCreate`, `onStartCommand`, `onDestroy`, `buildNotification`, `panelActivityPendingIntent`; `PanelLaunchActivity -> onCreate`.
+* `onDestroy()` clears `isRunning = false` and `usingStockNotificationFallback = false`, notifies listeners, cancels callbacks, and calls `controller.destroy()`.
+* Anchors: `OverlayVolumeService -> onCreate`, `onStartCommand`, `onDestroy`, `safeBuildNotification`, `buildCustomNotification`, `validateRemoteViews`, `buildStockFallbackNotification`, `panelActivityPendingIntent`; `PanelLaunchActivity -> onCreate`.
 
 ### [SUBSYSTEM: Overlay Window Management] | Aliases: WindowManager, edge snap, drag, touch, squircle, vertical panel
 > **1-Line Summary:** One controller owns all overlay windows (48dp squircle handle, 80×228dp vertical panel, 164dp 6-option popup, HUD) and every `addView`/`updateViewLayout`/`removeView` call safely.
@@ -48,13 +48,14 @@ flowchart TD
 * **Read-Back & DND Protection:** `applyHardwareStep()` attempts unmute when needed, wraps `setStreamVolume()` in `try-catch(SecurityException)`, retries once with `FLAG_SHOW_UI` on Android safe-media limits, reads back `audioManager.getStreamVolume()`, syncs all UI to the real read-back percentage, and displays `"Blocked by DND"` if blocked.
 * Anchors: `OverlayController -> detectSmartStreamIndex`, `resolveStreamForInteraction`, `selectStreamManual`, `enableAutoMode`, `stepVolume`, `setPercentDuringDrag`, `applyHardwareStep`, `volumeChangeReceiver`, `registerPlaybackCallbackO`.
 
-### [SUBSYSTEM: Boot, Permissions & OEM Survival] | Aliases: BOOT_COMPLETED, locked boot, auto-launch, battery, DND access
-> **1-Line Summary:** Boot handling defers locked starts until unlock, `MainActivity` reflects live `OverlayVolumeService.isRunning` state, and setup deep-links cover Realme OEM settings plus optional DND access.
+### [SUBSYSTEM: Boot, Permissions, Crash Reporter & OEM Survival] | Aliases: BOOT_COMPLETED, locked boot, auto-launch, battery, DND access, CrashReporter
+> **1-Line Summary:** `VolumeManagerApp` installs offline crash/event logging on process start, boot handling defers locked starts until unlock, and `MainActivity` surfaces live service state, Realme deep-links, and bug report export.
+* `VolumeManagerApp -> onCreate()` installs `CrashReporter` before any Activity or Service executes, writing uncaught exceptions to `filesDir/last_crash.txt` and discrete events to a rolling 60-line `filesDir/diagnostics.log`.
 * `BOOT_COMPLETED` / `QUICKBOOT_POWERON` / `MY_PACKAGE_REPLACED` start directly; `LOCKED_BOOT_COMPLETED` starts only when `UserManager.isUserUnlocked` is true.
 * Dynamic receivers specify `Context.RECEIVER_EXPORTED` on API 33+.
-* `MainActivity` observes `OverlayVolumeService.onRunningStateChanged` and checks `OverlayVolumeService.isRunning` so `statusPillService` accurately distinguishes `Active • Running`, `Stopped`, and `Setup Required`.
+* `MainActivity` observes `OverlayVolumeService.onRunningStateChanged`, displays `card_crash_alert` whenever a crash log exists, and provides `Copy Report` / `Share Report` via `CrashReporter.buildFullBugReport()`.
 * `Permissions` and `MainActivity` expose `ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS` (`ACCESS_NOTIFICATION_POLICY`) so users can optionally permit Ring/Notify changes in Silent/DND.
-* Anchors: `BootReceiver -> onReceive`, `startSafely`; `MainActivity -> onStart`, `onStop`, `updateStatus`; `Permissions -> hasNotificationPolicyAccess`, `notificationPolicyAccessIntent`; `RealmeSettings -> openAutoLaunch`, `openAppBatteryManagement`.
+* Anchors: `VolumeManagerApp -> onCreate`; `CrashReporter -> install`, `recordError`, `logEvent`, `buildFullBugReport`; `BootReceiver -> onReceive`, `startSafely`; `MainActivity -> onStart`, `onStop`, `updateStatus`, `shareBugReport`; `Permissions -> hasNotificationPolicyAccess`, `notificationPolicyAccessIntent`; `RealmeSettings -> openAutoLaunch`, `openAppBatteryManagement`.
 
 ## 2. Design Rationale (XML + layers vs. single programmatic service)
 

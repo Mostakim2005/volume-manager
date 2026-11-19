@@ -1,16 +1,21 @@
 package com.volumemanager
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import com.volumemanager.databinding.ActivityMainBinding
+import com.volumemanager.util.CrashReporter
 import com.volumemanager.util.Permissions
 import com.volumemanager.util.RealmeSettings
 
@@ -59,6 +64,25 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Not needed on Android 12 and below", Toast.LENGTH_SHORT).show()
             }
         }
+
+        binding.btnCopyCrash.setOnClickListener {
+            val crash = CrashReporter.readCrashSummary(this)
+            if (crash != null) {
+                copyTextToClipboard("Volume Manager Crash", crash, R.string.toast_crash_copied)
+            }
+        }
+        binding.btnClearCrash.setOnClickListener {
+            CrashReporter.clearCrashReport(this)
+            updateStatus()
+        }
+        binding.btnCopyReport.setOnClickListener {
+            copyTextToClipboard(
+                "Volume Manager Bug Report",
+                CrashReporter.buildFullBugReport(this),
+                R.string.toast_report_copied,
+            )
+        }
+        binding.btnShareReport.setOnClickListener { shareBugReport() }
     }
 
     override fun onStart() {
@@ -81,7 +105,9 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         try {
             updateStatus()
-        } catch (_: Throwable) {}
+        } catch (e: Throwable) {
+            CrashReporter.recordError(this, "MainActivity.onResume", e)
+        }
     }
 
     private fun startOverlayService() {
@@ -106,6 +132,7 @@ class MainActivity : AppCompatActivity() {
             }, 250)
             Toast.makeText(this, "Volume overlay started", Toast.LENGTH_SHORT).show()
         } catch (e: Throwable) {
+            CrashReporter.recordError(this, "MainActivity.startOverlayService", e)
             Toast.makeText(this, "Could not start overlay: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
@@ -118,7 +145,34 @@ class MainActivity : AppCompatActivity() {
             }, 250)
             Toast.makeText(this, "Volume overlay stopped", Toast.LENGTH_SHORT).show()
         } catch (e: Throwable) {
+            CrashReporter.recordError(this, "MainActivity.stopOverlayService", e)
             Toast.makeText(this, "Could not stop overlay: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun copyTextToClipboard(label: String, text: String, toastResId: Int) {
+        try {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
+            Toast.makeText(this, toastResId, Toast.LENGTH_SHORT).show()
+        } catch (e: Throwable) {
+            CrashReporter.recordError(this, "MainActivity.copyTextToClipboard", e)
+            Toast.makeText(this, "Clipboard failed: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun shareBugReport() {
+        try {
+            val report = CrashReporter.buildFullBugReport(this)
+            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Volume Manager Bug Report")
+                putExtra(Intent.EXTRA_TEXT, report)
+            }
+            startActivity(Intent.createChooser(sendIntent, getString(R.string.share_report_title)))
+        } catch (e: Throwable) {
+            CrashReporter.recordError(this, "MainActivity.shareBugReport", e)
+            Toast.makeText(this, "Could not share report: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -194,5 +248,13 @@ class MainActivity : AppCompatActivity() {
             "Battery optimization ignored: ${mark(isBatteryExempt)}",
             "DND policy access: ${mark(hasDndAccess)}",
         ).joinToString(separator = "\n")
+
+        val crashSummary = CrashReporter.readCrashSummary(this)
+        if (crashSummary != null) {
+            binding.cardCrashAlert.visibility = View.VISIBLE
+            binding.textCrashPreview.text = crashSummary
+        } else {
+            binding.cardCrashAlert.visibility = View.GONE
+        }
     }
 }

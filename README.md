@@ -65,11 +65,13 @@ APK output: `app\build\outputs\apk\debug\app-debug.apk`
 
 ```
 app/src/main/java/com/volumemanager/
-  MainActivity.kt                 permission/setup launcher + live service status
+  VolumeManagerApp.kt             Application entry installing offline crash logger
+  MainActivity.kt                 permission/setup launcher, status & bug report export
   BootReceiver.kt                 BOOT_COMPLETED / locked-boot deferral
-  OverlayVolumeService.kt         foreground service + compact/expanded notification
+  OverlayVolumeService.kt         foreground service + RemoteViews preflight + stock fallback
   PanelLaunchActivity.kt          translucent shade-collapse trampoline for Panel button
   overlay/OverlayController.kt    WindowManager overlays, smart detection, hardware read-back
+  util/CrashReporter.kt           offline stack trace + diagnostics.log + bug report builder
   util/Permissions.kt             runtime/special permission helpers (incl. DND access)
   util/RealmeSettings.kt          OEM deep-links with stock fallbacks
 app/src/main/res/                 DayNight layouts, drawables, values, launcher icons

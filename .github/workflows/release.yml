@@ -40,6 +40,9 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
 
+      - name: Run Android Lint gate
+        run: ./gradlew lintDebug --stacktrace
+
       - name: Prepare signing keystore
         env:
           KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}

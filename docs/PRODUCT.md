@@ -82,6 +82,16 @@
   * `app/src/main/java/com/volumemanager/util/RealmeSettings.kt` -> `openAutoLaunch`, `openAppBatteryManagement`
   * `app/src/main/java/com/volumemanager/OverlayVolumeService.kt` -> `isRunning`, `onRunningStateChanged`
 
+### [FEATURE: Offline Crash Reporter, Pre-Flight RemoteViews Guard & Bug Report Export] | Aliases: crash log, bug report, RemoteViews fallback, diagnostics
+> **1-Line Summary:** Captures uncaught exceptions and runtime errors offline in app-private storage, pre-validates custom notifications with stock fallback, and provides Copy/Share bug report controls in `MainActivity`.
+* **User Intention (Non-Negotiable):** Never crash-loop silently on OEM SystemUI quirks; surface exact stack traces and live audio state offline so issues can be copied and diagnosed immediately.
+* **Code Anchors:**
+  * `app/src/main/java/com/volumemanager/VolumeManagerApp.kt` -> `onCreate`
+  * `app/src/main/java/com/volumemanager/util/CrashReporter.kt` -> `install`, `recordError`, `logEvent`, `readCrashSummary`, `clearCrashReport`, `buildFullBugReport`
+  * `app/src/main/java/com/volumemanager/OverlayVolumeService.kt` -> `safeBuildNotification`, `validateRemoteViews`, `buildStockFallbackNotification`, `usingStockNotificationFallback`
+  * `app/src/main/java/com/volumemanager/MainActivity.kt` -> `copyTextToClipboard`, `shareBugReport`, `updateStatus`
+  * `app/src/main/res/layout/activity_main.xml` -> `card_crash_alert`, `card_diagnostics`, `btn_copy_crash`, `btn_clear_crash`, `btn_copy_report`, `btn_share_report`
+
 ## 3. Planned Features & App-Merge Wishlist
 
 ### [WISHLIST: LoudnessEnhancer Fine Attenuation] | Aliases: sub-step precision, decibel trim

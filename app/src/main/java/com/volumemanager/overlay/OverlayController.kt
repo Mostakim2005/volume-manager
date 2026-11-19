@@ -29,6 +29,7 @@ import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import com.volumemanager.R
+import com.volumemanager.util.CrashReporter
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
@@ -178,8 +179,10 @@ class OverlayController(
             updateGestureExclusion()
             registerReceivers()
             resetIdleTimer()
+            CrashReporter.logEvent(context, "OVL", "Handle added")
             Log.d(TAG, "Squircle edge handle added")
         } catch (e: Throwable) {
+            CrashReporter.recordError(context, "OverlayController.show", e)
             Log.e(TAG, "Failed to add handle: ${e.message}")
         }
     }
@@ -228,6 +231,7 @@ class OverlayController(
         refreshManualLockTimer()
         val current = currentPercent(activeStream)
         syncAllUi(current, immediate = true)
+        CrashReporter.logEvent(context, "STREAM", "manual -> $activeStreamName")
         showHud("$activeStreamName: ${current.roundToInt()}%")
         scheduleHideHud()
     }
@@ -240,6 +244,7 @@ class OverlayController(
         dragLastSentStep = -1
         val current = currentPercent(activeStream)
         syncAllUi(current, immediate = true)
+        CrashReporter.logEvent(context, "STREAM", "auto -> $activeStreamName")
         showHud("${context.getString(R.string.stream_auto_short)} • $activeStreamName: ${current.roundToInt()}%")
         scheduleHideHud()
     }
@@ -572,6 +577,7 @@ class OverlayController(
             resetAutoDismissPanel()
             Log.d(TAG, "Vertical panel opened")
         } catch (e: Exception) {
+            CrashReporter.recordError(context, "OverlayController.openPanel", e)
             Log.e(TAG, "Failed to add panel: ${e.message}")
             panelParams = null
         }
@@ -669,6 +675,7 @@ class OverlayController(
         try {
             windowManager.addView(view, params)
         } catch (e: Exception) {
+            CrashReporter.recordError(context, "OverlayController.openPopup", e)
             Log.e(TAG, "Failed to add popup: ${e.message}")
             popup = null
             popupParams = null
@@ -825,6 +832,7 @@ class OverlayController(
 
         val actualPct = stepToPercent(actual, max)
         dragLastSentStep = if (dndBlocked) -1 else actual
+        CrashReporter.logEvent(context, "VOL", "$activeStreamName before=$before req=$clampedStep actual=$actual dnd=$dndBlocked")
         syncAllUi(actualPct, immediate = isDiscreteStep || dndBlocked)
 
         if (dndBlocked) {
@@ -929,7 +937,9 @@ class OverlayController(
                 registerPlaybackCallbackO()
             }
             receiversRegistered = true
-        } catch (_: Exception) {}
+        } catch (e: Throwable) {
+            CrashReporter.recordError(context, "OverlayController.registerReceivers", e)
+        }
     }
 
     private fun unregisterReceivers() {
