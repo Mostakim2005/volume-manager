@@ -61,6 +61,12 @@
 * **Status:** `[DECIDED BY: HUMAN]`
 * **Anchors:** `VolumeManagerApp -> onCreate`; `CrashReporter -> install`, `buildFullBugReport`; `OverlayVolumeService -> safeBuildNotification`, `validateRemoteViews`, `buildStockFallbackNotification`; `.github/workflows/release.yml`.
 
+### [DECISION: Hybrid Architecture [2A] — Custom Panel Plus Quick Settings Native Volume Backup] | Aliases: 2A hybrid, Quick Settings tile, native system slider
+> **1-Line Summary:** Keeps the custom `80×228 dp` vertical panel and 5-profile expanded notification while adding `VolumeTileService` and an in-app button that summon Realme UI's native multi-stream slider (`FLAG_SHOW_UI`).
+* **Why:** Preserves fast one-handed edge scrubbing and direct 5-stream shade controls while giving users an OS-native fallback that still works even if OEM battery rules pause the overlay service.
+* **Status:** `[DECIDED BY: HUMAN]`
+* **Anchors:** `VolumeTileService -> onStartListening`, `onClick`; `PanelLaunchActivity -> showSystemVolumeUi`; `MainActivity -> onCreate` (`btnSystemVolume`).
+
 ## 2. Traps
 
 ```mermaid

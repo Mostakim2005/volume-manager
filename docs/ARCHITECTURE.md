@@ -7,9 +7,12 @@
 flowchart TD
     BOOT[BootReceiver] -->|startForegroundService| SVC[OverlayVolumeService]
     ACT[MainActivity] -->|start/stop + live status| SVC
+    ACT -->|btn_system_volume| SYSUI[AudioManager FLAG_SHOW_UI]
+    QS[VolumeTileService QS Tile] -->|PendingIntent / Activity| LAUNCH[PanelLaunchActivity]
     NOTIF[Notification shade compact/expanded] -->|step/stream actions| SVC
-    NOTIF -->|PendingIntent.getActivity| LAUNCH[PanelLaunchActivity]
-    LAUNCH -->|collapses shade + ACTION_OPEN_PANEL| SVC
+    NOTIF -->|PendingIntent.getActivity| LAUNCH
+    LAUNCH -->|MODE_OVERLAY_PANEL: ACTION_OPEN_PANEL| SVC
+    LAUNCH -->|MODE_SYSTEM_VOLUME_UI| SYSUI
     SVC -->|creates + owns| OC[OverlayController]
     OC -->|TYPE_APPLICATION_OVERLAY| HANDLE[48dp squircle edge handle]
     OC -->|TYPE_APPLICATION_OVERLAY| PANEL[80x228dp vertical volume panel]
@@ -26,9 +29,10 @@ flowchart TD
 * `onCreate()` sets `isRunning = true`, notifies `onRunningStateChanged`, creates the channel, sets `permissionMissing = !Permissions.canDrawOverlays(this)`, calls `startForeground(NOTIFICATION_ID, safeBuildNotification())` immediately, builds `OverlayController`, calls `show()`, and calls `syncCurrentState()` when overlay permission is granted.
 * `onStartCommand()` catches unexpected `Throwable`s via `CrashReporter.recordError()` and dispatches `ACTION_OPEN_PANEL` (180 ms delayed after shade collapse), `ACTION_TOGGLE_PANEL`, `ACTION_CYCLE_STREAM`, `ACTION_SELECT_STREAM`, `ACTION_AUTO_STREAM`, `ACTION_VOLUME_UP`, `ACTION_VOLUME_DOWN`, and `ACTION_STOP`.
 * `safeBuildNotification()` runs `buildCustomNotification()`, validates both `RemoteViews` layouts via `validateRemoteViews()` (`RemoteViews.apply(...)` into an in-memory `FrameLayout`), and falls back automatically to `buildStockFallbackNotification()` if any inflation error occurs.
-* `PanelLaunchActivity` is an empty-task translucent `android.app.Activity` that causes SystemUI to collapse the notification shade natively on launch, forwards `ACTION_OPEN_PANEL` to `OverlayVolumeService`, and finishes immediately with animations suppressed.
+* `PanelLaunchActivity` is an empty-task translucent `android.app.Activity` that collapses the notification or Quick Settings shade natively, then either forwards `ACTION_OPEN_PANEL` (`MODE_OVERLAY_PANEL`) or invokes `AudioManager.adjustVolume(ADJUST_SAME, FLAG_SHOW_UI)` after 180 ms (`MODE_SYSTEM_VOLUME_UI`).
+* `VolumeTileService` exposes a Quick Settings `Volume` tile (`BIND_QUICK_SETTINGS_TILE`) on Android 7+ that launches `PanelLaunchActivity` in `MODE_SYSTEM_VOLUME_UI`.
 * `onDestroy()` clears `isRunning = false` and `usingStockNotificationFallback = false`, notifies listeners, cancels callbacks, and calls `controller.destroy()`.
-* Anchors: `OverlayVolumeService -> onCreate`, `onStartCommand`, `onDestroy`, `safeBuildNotification`, `buildCustomNotification`, `validateRemoteViews`, `buildStockFallbackNotification`, `panelActivityPendingIntent`; `PanelLaunchActivity -> onCreate`.
+* Anchors: `OverlayVolumeService -> onCreate`, `onStartCommand`, `onDestroy`, `safeBuildNotification`, `buildCustomNotification`, `validateRemoteViews`, `buildStockFallbackNotification`, `panelActivityPendingIntent`; `PanelLaunchActivity -> onCreate`, `showSystemVolumeUi`; `VolumeTileService -> onStartListening`, `onClick`.
 
 ### [SUBSYSTEM: Overlay Window Management] | Aliases: WindowManager, edge snap, drag, touch, squircle, vertical panel
 > **1-Line Summary:** One controller owns all overlay windows (48dp squircle handle, 80×228dp vertical panel, 164dp 6-option popup, HUD) and every `addView`/`updateViewLayout`/`removeView` call safely.

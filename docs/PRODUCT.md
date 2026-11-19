@@ -69,9 +69,17 @@
   * Strict `@RemoteView` compliance: uses only `LinearLayout`, `RelativeLayout`, `FrameLayout`, `TextView`, and `ProgressBar` (no raw `<View>` elements).
   * Panel launcher uses `PanelLaunchActivity` (`Theme.VolumeManager.Transparent`, empty `taskAffinity`) so the shade collapses natively without pulling `MainActivity` over foreground apps or using restricted `ACTION_CLOSE_SYSTEM_DIALOGS`.
 * **Code Anchors:**
-  * `app/src/main/java/com/volumemanager/OverlayVolumeService.kt` -> `buildNotification`, `onStartCommand`, `panelActivityPendingIntent`, `servicePendingIntent`
-  * `app/src/main/java/com/volumemanager/PanelLaunchActivity.kt` -> `onCreate`, `suppressTransition`
+  * `app/src/main/java/com/volumemanager/OverlayVolumeService.kt` -> `safeBuildNotification`, `buildCustomNotification`, `onStartCommand`, `panelActivityPendingIntent`, `servicePendingIntent`
+  * `app/src/main/java/com/volumemanager/PanelLaunchActivity.kt` -> `onCreate`, `suppressTransition`, `showSystemVolumeUi`
   * `app/src/main/res/layout/notification_volume_compact.xml`, `app/src/main/res/layout/notification_volume_expanded.xml`
+
+### [FEATURE: Quick Settings Volume Tile & Native System Slider Backup] | Aliases: quick settings tile, VolumeTileService, FLAG_SHOW_UI, system slider
+> **1-Line Summary:** Provides a Quick Settings `Volume` tile and an in-app `Open System Volume Slider` button that summon Realme UI's native multi-stream volume dialog on demand, even when the overlay service is stopped.
+* **Code Anchors:**
+  * `app/src/main/java/com/volumemanager/VolumeTileService.kt` -> `onStartListening`, `onClick`
+  * `app/src/main/java/com/volumemanager/PanelLaunchActivity.kt` -> `onCreate`, `showSystemVolumeUi`
+  * `app/src/main/java/com/volumemanager/MainActivity.kt` -> `onCreate` (`btnSystemVolume`)
+  * `app/src/main/AndroidManifest.xml` -> `VolumeTileService` (`BIND_QUICK_SETTINGS_TILE`)
 
 ### [FEATURE: Boot Auto-Start, DND Policy Access & Honest Service Status] | Aliases: reboot survival, BOOT_COMPLETED, DND safe, service status
 > **1-Line Summary:** Restarts service safely after unlock on boot, offers optional Notification Policy Access for Ring/Notify in DND, reports honest DND blocks, and reflects real running state in `MainActivity`.

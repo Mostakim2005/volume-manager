@@ -41,6 +41,9 @@
     <string name="btn_auto_launch">Auto-launch apps (Realme)</string>
     <string name="btn_start">Start overlay service</string>
     <string name="btn_stop">Stop overlay service</string>
+    <string name="btn_system_volume">Open System Volume Slider</string>
+    <string name="qs_tile_label">Volume</string>
+    <string name="qs_tile_subtitle">System slider</string>
     <string name="status_heading">Permission status</string>
     <string name="card_crash_title">Last Crash Detected</string>
     <string name="btn_copy_crash">Copy Crash</string>

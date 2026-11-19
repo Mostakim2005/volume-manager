@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnStart.setOnClickListener { startOverlayService() }
         binding.btnStop.setOnClickListener { stopOverlayService() }
+        binding.btnSystemVolume.setOnClickListener { PanelLaunchActivity.showSystemVolumeUi(this) }
 
         binding.btnOverlay.setOnClickListener { RealmeSettings.openDisplayOverOtherApps(this) }
         binding.btnAutoLaunch.setOnClickListener { RealmeSettings.openAutoLaunch(this) }

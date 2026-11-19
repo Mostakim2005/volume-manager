@@ -60,6 +60,7 @@ APK output: `app\build\outputs\apk\debug\app-debug.apk`
 - Tap the **stream badge** at the top of the vertical panel — opens the 6-option stream selector (`Auto (Smart)`, `Media`, `Ring`, `Notify`, `Call`, `Alarm`).
 - **Expanded notification:** tap any of the 5 profile buttons (`Media`, `Ring`, `Notify`, `Call`, `Alarm`) to lock onto that profile for 15 seconds, tap the status pill to return to `Auto`, use `[−]` / `[+]` for guaranteed `±1` hardware steps, or tap **🎚️ Panel** to collapse the shade and open the floating vertical panel.
 - **Collapsed notification:** tap the stream pill to cycle streams, use `[−]` / `[+]` to step volume, or tap **🎚️** to open the floating panel.
+- **Quick Settings Tile & Backup:** add the **Volume** Quick Settings tile from the shade (or tap **Open System Volume Slider** in the app) to summon Realme UI's native multi-stream volume dialog anytime, even if the overlay service is stopped.
 
 ## Project layout
 
@@ -69,7 +70,8 @@ app/src/main/java/com/volumemanager/
   MainActivity.kt                 permission/setup launcher, status & bug report export
   BootReceiver.kt                 BOOT_COMPLETED / locked-boot deferral
   OverlayVolumeService.kt         foreground service + RemoteViews preflight + stock fallback
-  PanelLaunchActivity.kt          translucent shade-collapse trampoline for Panel button
+  PanelLaunchActivity.kt          translucent shade-collapse launcher (panel + system slider)
+  VolumeTileService.kt            Quick Settings tile calling native system volume dialog
   overlay/OverlayController.kt    WindowManager overlays, smart detection, hardware read-back
   util/CrashReporter.kt           offline stack trace + diagnostics.log + bug report builder
   util/Permissions.kt             runtime/special permission helpers (incl. DND access)
