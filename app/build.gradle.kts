@@ -13,8 +13,8 @@ android {
         // Target 33 on purpose: tuned for Realme 6 (Android 10/11) and avoids
         // unrequested Android 14+ behavioral changes while compiling against SDK 35.
         targetSdk = 33
-        versionCode = 8
-        versionName = "1.4.0"
+        versionCode = 9
+        versionName = "2.0.0"
     }
 
     // CI supplies these env vars; local builds simply produce an unsigned APK.
