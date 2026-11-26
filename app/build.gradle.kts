@@ -10,9 +10,8 @@ android {
     defaultConfig {
         applicationId = "com.volumemanager"
         minSdk = 23
-        // Target 33 on purpose: the handset this is built for (Realme 6, Android 10/11)
-        // is unaffected by Android 14+ foreground-service-type enforcement, and keeping
-        // targetSdk below 34 avoids needing the "specialUse" FGS subtype on that device.
+        // Target 33 on purpose: tuned for Realme 6 (Android 10/11) and avoids
+        // unrequested Android 14+ behavioral changes while compiling against SDK 35.
         targetSdk = 33
         versionCode = 8
         versionName = "1.4.0"

@@ -6,7 +6,7 @@ import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.os.Build
 import android.util.Log
-import com.volumemanager.OverlayVolumeService
+import com.volumemanager.VolumeAccessibilityService
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -14,8 +14,8 @@ import java.util.Locale
 
 /**
  * 100% offline crash and diagnostic event recorder stored in app-private filesDir.
- * Never touches network or external storage; surfaces stack traces and live audio
- * state inside MainActivity so device-specific Realme UI issues can be diagnosed.
+ * Never touches network or external storage; surfaces stack traces and live state
+ * inside MainActivity so device-specific Realme UI issues can be diagnosed.
  */
 object CrashReporter {
 
@@ -68,13 +68,6 @@ object CrashReporter {
         } catch (_: Throwable) {}
     }
 
-    fun hasCrashReport(context: Context): Boolean = try {
-        val file = File(context.applicationContext.filesDir, CRASH_FILE)
-        file.exists() && file.length() > 0L
-    } catch (_: Throwable) {
-        false
-    }
-
     fun readCrashSummary(context: Context): String? = try {
         synchronized(lock) {
             val file = File(context.applicationContext.filesDir, CRASH_FILE)
@@ -106,13 +99,12 @@ object CrashReporter {
         sb.appendLine("ABIs: ${Build.SUPPORTED_ABIS.joinToString()}")
         sb.appendLine()
 
-        sb.appendLine("--- Permissions & Service ---")
-        sb.appendLine("Overlay permission: ${Permissions.canDrawOverlays(appCtx)}")
-        sb.appendLine("Notification permission: ${Permissions.hasNotificationPermission(appCtx)}")
+        sb.appendLine("--- Service & Preferences ---")
+        sb.appendLine("Accessibility enabled: ${Permissions.isAccessibilityServiceEnabled(appCtx)}")
+        sb.appendLine("Accessibility connected: ${VolumeAccessibilityService.isConnected}")
+        sb.appendLine("Floating button visible toggle: ${OverlayPrefs.isButtonEnabled(appCtx)}")
+        sb.appendLine("Button size: ${OverlayPrefs.getSizeDp(appCtx)}dp, Idle opacity: ${OverlayPrefs.getIdleOpacityPercent(appCtx)}%")
         sb.appendLine("Battery optimization exempt: ${Permissions.isIgnoringBatteryOptimizations(appCtx)}")
-        sb.appendLine("DND policy access: ${Permissions.hasNotificationPolicyAccess(appCtx)}")
-        sb.appendLine("Service running: ${OverlayVolumeService.isRunning}")
-        sb.appendLine("Stock notification fallback: ${OverlayVolumeService.usingStockNotificationFallback}")
         sb.appendLine()
 
         sb.appendLine("--- Audio State ---")
@@ -133,17 +125,7 @@ object CrashReporter {
             for ((stream, label) in streams) {
                 val cur = runCatching { audioManager.getStreamVolume(stream) }.getOrDefault(-1)
                 val max = runCatching { audioManager.getStreamMaxVolume(stream) }.getOrDefault(-1)
-                val min = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    runCatching { audioManager.getStreamMinVolume(stream) }.getOrDefault(0)
-                } else {
-                    0
-                }
-                val muted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    runCatching { audioManager.isStreamMute(stream) }.getOrDefault(false)
-                } else {
-                    false
-                }
-                sb.appendLine("  $label: $cur / $min..$max (muted=$muted)")
+                sb.appendLine("  $label: $cur / $max")
             }
         }
         sb.appendLine()

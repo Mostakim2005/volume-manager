@@ -1,33 +1,53 @@
 package com.volumemanager.util
 
-import android.Manifest
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.annotation.SuppressLint
-import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
-import androidx.core.content.ContextCompat
+import android.view.accessibility.AccessibilityManager
+import com.volumemanager.VolumeAccessibilityService
 
 /**
- * Thin wrappers around the permissions the utility needs.
- * SYSTEM_ALERT_WINDOW, battery-optimization exemption, and Notification Policy
- * access are granted through Settings screens rather than standard dialogs.
+ * Checks Accessibility service enablement and battery-optimization exemption,
+ * and constructs system settings intents without requiring overlay/notification permissions.
  */
 object Permissions {
 
-    fun canDrawOverlays(context: Context): Boolean =
-        Settings.canDrawOverlays(context)
+    fun isAccessibilityServiceEnabled(context: Context): Boolean {
+        if (VolumeAccessibilityService.isConnected) return true
 
-    fun hasNotificationPermission(context: Context): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS,
-            ) == PackageManager.PERMISSION_GRANTED
+        val expected = ComponentName(context, VolumeAccessibilityService::class.java)
+        try {
+            val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
+            val enabledList = am?.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            if (enabledList != null) {
+                for (info in enabledList) {
+                    val si = info.resolveInfo?.serviceInfo ?: continue
+                    if (si.packageName == expected.packageName && si.name == expected.className) {
+                        return true
+                    }
+                }
+            }
+        } catch (_: Throwable) {}
+
+        return try {
+            val enabledRaw = Settings.Secure.getString(
+                context.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+            ) ?: return false
+            enabledRaw.split(':').any { entry ->
+                ComponentName.unflattenFromString(entry) == expected
+            }
+        } catch (_: Throwable) {
+            false
+        }
+    }
 
     @SuppressLint("BatteryLife")
     fun isIgnoringBatteryOptimizations(context: Context): Boolean {
@@ -36,19 +56,17 @@ object Permissions {
         return powerManager.isIgnoringBatteryOptimizations(context.packageName)
     }
 
-    fun hasNotificationPolicyAccess(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-        return notificationManager?.isNotificationPolicyAccessGranted == true
+    /** Opens Android Accessibility settings, pre-highlighting Volume Manager when supported. */
+    fun accessibilitySettingsIntent(context: Context): Intent {
+        val component = ComponentName(context, VolumeAccessibilityService::class.java).flattenToString()
+        val args = Bundle().apply {
+            putString(":settings:fragment_args_key", component)
+        }
+        return Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+            putExtra(":settings:fragment_args_key", component)
+            putExtra(":settings:show_fragment_args", args)
+        }
     }
-
-    /** Opens the Android "Display over other apps" screen for this package. */
-    fun overlaySettingsIntent(context: Context): Intent =
-        Intent(
-            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-            Uri.parse("package:${context.packageName}"),
-        )
 
     /** Opens the system "Ignore battery optimizations" prompt for this package. */
     @SuppressLint("BatteryLife")
@@ -57,12 +75,4 @@ object Permissions {
             Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
             Uri.parse("package:${context.packageName}"),
         )
-
-    /** Opens the system Do Not Disturb access screen. */
-    fun notificationPolicyAccessIntent(): Intent =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
-        } else {
-            Intent(Settings.ACTION_SOUND_SETTINGS)
-        }
 }

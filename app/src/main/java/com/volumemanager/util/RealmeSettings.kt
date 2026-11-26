@@ -8,13 +8,7 @@ import android.provider.Settings
 import android.widget.Toast
 
 /**
- * Deep links into Realme UI (ColorOS-based) battery / startup screens.
- *
- * Realme UI 1.0/2.0 on the RMX2001 ships a security suite whose component names
- * changed between builds. We therefore keep a ranked list of candidate
- * components and launch the first one that actually resolves on the device,
- * falling back to a stock Android settings screen. Without "Auto-launch"
- * enabled, Realme UI silently drops BOOT_COMPLETED, so this screen is vital.
+ * Deep links into Realme UI (ColorOS-based) battery / startup screens and Accessibility settings.
  */
 object RealmeSettings {
 
@@ -48,6 +42,17 @@ object RealmeSettings {
         }
     }
 
+    /** Settings -> Additional Settings -> Accessibility. */
+    fun openAccessibilitySettings(context: Context) {
+        launchFirst(
+            context,
+            listOf(
+                Permissions.accessibilitySettingsIntent(context),
+                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
+            ),
+        )
+    }
+
     /** Settings -> App Management -> Auto-launch apps. */
     fun openAutoLaunch(context: Context) {
         launchFirst(
@@ -73,16 +78,5 @@ object RealmeSettings {
                 Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
             ),
         )
-    }
-
-    /** Settings -> App Management -> Display over other apps. */
-    fun openDisplayOverOtherApps(context: Context) {
-        try {
-            val intent = Permissions.overlaySettingsIntent(context)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            launchFirst(context, listOf(appDetailsIntent(context)))
-        }
     }
 }

@@ -3,35 +3,14 @@
     <color name="primary">#FF6B3D</color>
     <color name="primary_dark">#F4511E</color>
     <color name="accent">#10B981</color>
-    <color name="accent_blue">#3B82F6</color>
-    <color name="accent_green">#10B981</color>
-    <color name="accent_green_glow">#4D10B981</color>
 
     <color name="panel_background">#1E293B</color>
-    <color name="handle_background">#FF7A6B</color>
-
-    <!-- Theme-adaptive overlay surface colors (Dark Mode) -->
-    <color name="overlay_surface_bg">#1E293B</color>
-    <color name="overlay_surface_stroke">#334155</color>
-    <color name="overlay_track_bg">#334155</color>
-    <color name="overlay_option_bg">#0F172A</color>
-    <color name="overlay_option_active_bg">#43281C</color>
-    <color name="overlay_option_active_text">#FDBA74</color>
-
-    <!-- Theme-adaptive notification colors (Dark Mode - 100% WCAG AAA contrast) -->
-    <color name="notif_text_primary">#F8FAFC</color>
-    <color name="notif_text_secondary">#94A3B8</color>
-    <color name="notif_track_bg">#26334F</color>
-    <color name="notif_btn_bg">#1E293B</color>
-    <color name="notif_btn_stroke">#334155</color>
-    <color name="notif_btn_text">#F8FAFC</color>
-    <color name="notif_chip_active_bg">#EA580C</color>
-    <color name="notif_chip_active_text">#FFFFFF</color>
-    <color name="notif_accent_text">#FDBA74</color>
     <color name="text_primary">#F8FAFC</color>
     <color name="text_secondary">#94A3B8</color>
     <color name="card_background">#151C2E</color>
     <color name="card_stroke">#232F48</color>
+    <color name="chip_active_bg">#43281C</color>
+    <color name="chip_active_text">#FDBA74</color>
     <color name="tip_card_bg">#2A1B14</color>
     <color name="tip_card_stroke">#43281C</color>
     <color name="tip_card_text">#FDBA74</color>

@@ -1,69 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Volume Manager</string>
+    <string name="app_subtitle">Lightweight system volume launcher</string>
 
-    <!-- Foreground-service notification -->
-    <string name="notification_channel_name">Volume overlay service</string>
-    <string name="notification_channel_desc">Silent notification that keeps the edge volume dock alive.</string>
-    <string name="notification_title">Volume Manager</string>
-    <string name="notif_status_compact">%1$s %2$d%%</string>
-    <string name="notif_status_expanded">%1$s %2$s • %3$d%% (%4$s)</string>
-    <string name="notif_mode_auto">Auto</string>
-    <string name="notif_mode_manual">Manual</string>
-    <string name="notif_open_panel">🎚️ Panel</string>
-    <string name="notif_open_panel_desc">Open floating volume panel</string>
-    <string name="notif_volume_down_desc">Decrease volume</string>
-    <string name="notif_volume_up_desc">Increase volume</string>
-    <string name="notif_permission_needed">Tap to grant overlay permission</string>
-    <string name="notif_media_down">Volume icon</string>
+    <!-- Accessibility service -->
+    <string name="accessibility_service_desc">Displays a small floating edge button that opens the system volume slider when tapped. Reads no screen content and collects no data.</string>
 
     <!-- Main activity -->
-    <string name="main_intro" formatted="false">Floating edge volume control for Realme 6. Drag the squircle up/down to adjust volume, tap to open vertical slider, hold to reposition.</string>
-    <string name="main_setup_heading">Realme 6 / Realme UI setup</string>
-    <string name="main_setup_hint">Auto-launch must be ON or Realme UI blocks the boot receiver after a restart. In App Battery Management allow both background and foreground activity.</string>
-    <string name="card_service_title">Overlay Service</string>
-    <string name="card_service_desc">Controls the floating edge handle and volume panel.</string>
-    <string name="card_permissions_title">Required Permissions</string>
-    <string name="card_realme_title">Realme UI Background &amp; Autostart</string>
-    <string name="tip_system_overlay_title">How to silence the \"App displaying over other apps\" notice</string>
-    <string name="tip_system_overlay_desc">Android shows a persistent system notification whenever an overlay is active. To hide it: press and hold that notification in the shade, tap Turn off notifications, and switch off \"Display over other apps\".</string>
-    <string name="status_running">Active • Running</string>
-    <string name="status_stopped">Stopped</string>
-    <string name="status_setup_required">Setup Required</string>
-    <string name="status_granted">Granted</string>
-    <string name="status_required">Setup</string>
-    <string name="btn_overlay">Display over other apps</string>
-    <string name="btn_notifications">Notification permission</string>
-    <string name="btn_battery_optimization">Ignore battery optimizations</string>
-    <string name="btn_dnd_access">Do Not Disturb access (optional)</string>
-    <string name="dnd_access_desc">Allows changing Ring &amp; Notify volume while in Silent or DND</string>
-    <string name="btn_battery_management">App Battery Management (Realme)</string>
-    <string name="btn_auto_launch">Auto-launch apps (Realme)</string>
-    <string name="btn_start">Start overlay service</string>
-    <string name="btn_stop">Stop overlay service</string>
+    <string name="card_launcher_title">System Volume Launcher</string>
+    <string name="card_launcher_desc">Tap the floating button anywhere to open Realme UI’s native volume slider. Drag or hold to move and snap to either edge.</string>
+    <string name="toggle_floating_button">Show floating edge button</string>
+    <string name="toggle_floating_button_desc">Hide or show the edge button anytime without leaving this screen</string>
+    <string name="btn_accessibility_enable">Enable Accessibility Overlay</string>
+    <string name="btn_accessibility_retoggle">Re-enable Accessibility Service</string>
     <string name="btn_system_volume">Open System Volume Slider</string>
-    <string name="qs_tile_label">Volume</string>
-    <string name="qs_tile_subtitle">System slider</string>
-    <string name="status_heading">Permission status</string>
+    <string name="toast_enable_accessibility">Find Volume Manager in Accessibility and switch it ON</string>
+
+    <!-- Button appearance -->
+    <string name="card_appearance_title">Floating Button Appearance</string>
+    <string name="button_size_label">Button size</string>
+    <string name="size_compact">Compact</string>
+    <string name="size_standard">Standard</string>
+    <string name="size_large">Large</string>
+    <string name="idle_opacity_label">Idle opacity</string>
+    <string name="default_opacity_text" formatted="false">35%</string>
+    <string name="opacity_percent_format">%1$d%%</string>
+
+    <!-- Setup & Realme survival -->
+    <string name="card_setup_title">Setup &amp; Realme Background Survival</string>
+    <string name="btn_accessibility">Accessibility overlay</string>
+    <string name="accessibility_row_desc">Keeps the floating button alive over every app with zero notifications</string>
+    <string name="btn_battery_optimization">Ignore battery optimizations</string>
+    <string name="battery_row_desc">Prevents Android Doze from killing the Accessibility process</string>
+    <string name="main_setup_hint">On Realme UI, enable Auto-launch and allow background activity in App Battery Management so the button restarts after a reboot.</string>
+    <string name="btn_auto_launch_short">Auto-Launch</string>
+    <string name="btn_battery_mgmt_short">Battery Mgmt</string>
+
+    <!-- Status labels -->
+    <string name="status_running">Active • Running</string>
+    <string name="status_hidden">Button Hidden</string>
+    <string name="status_restart_needed">Restart Needed</string>
+    <string name="status_setup_required">Setup Required</string>
+    <string name="perm_connected">CONNECTED ✓</string>
+    <string name="perm_retoggle">RE-TOGGLE ➔</string>
+    <string name="perm_exempt">EXEMPT ✓</string>
+    <string name="perm_setup">SETUP ➔</string>
+
+    <!-- Quick Settings tip -->
+    <string name="tip_qs_tile_title">Quick Settings Volume Tile (Zero-Battery Backup)</string>
+    <string name="tip_qs_tile_desc">Edit your Quick Settings panel from the notification shade and drag in the Volume tile to open the system volume slider anytime, even when the floating button is hidden.</string>
+
+    <!-- Crash reporter & diagnostics -->
     <string name="card_crash_title">Last Crash Detected</string>
     <string name="btn_copy_crash">Copy Crash</string>
     <string name="btn_clear_crash">Dismiss</string>
     <string name="card_diagnostics_title">Diagnostics &amp; Bug Report</string>
-    <string name="card_diagnostics_desc">Offline report with device info, audio stream levels, permissions, and recent logs. Copy or share to debug issues.</string>
+    <string name="card_diagnostics_desc">Offline report with device info, audio stream levels, service state, and recent logs. Copy or share to debug issues.</string>
     <string name="btn_copy_report">Copy Report</string>
     <string name="btn_share_report">Share Report</string>
     <string name="toast_report_copied">Bug report copied to clipboard</string>
     <string name="toast_crash_copied">Crash log copied to clipboard</string>
     <string name="share_report_title">Share Volume Manager Bug Report</string>
 
-    <!-- Floating overlay -->
-    <string name="handle_content_description">Drag up or down for volume, tap to toggle vertical slider, hold to move</string>
-    <string name="stream_auto_short">Auto</string>
-    <string name="stream_music_short">Media</string>
-    <string name="stream_ring_short">Ring</string>
-    <string name="stream_notify_short">Notify</string>
-    <string name="stream_call_short">Call</string>
-    <string name="stream_alarm_short">Alarm</string>
-    <string name="hud_dnd_blocked">Blocked by DND</string>
-    <string name="zero_percent" formatted="false">0%</string>
+    <!-- Quick Settings tile & floating button -->
+    <string name="qs_tile_label">Volume</string>
+    <string name="qs_tile_subtitle">System slider</string>
+    <string name="handle_content_description">Tap to open system volume slider, drag or hold to move</string>
 </resources>

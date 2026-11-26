@@ -3,27 +3,28 @@
 
 ## 1. Project Tech Stack & Environment
 * **Language / Build:** Kotlin 1.9.24, Gradle 8.7 (wrapper included), Android Gradle Plugin 8.5.2.
-* **SDK levels:** `compileSdk = 35`, `minSdk = 23`, `targetSdk = 33` (deliberately below 34 — see `docs/DECISIONS_AND_TRAPS.md`).
+* **SDK levels:** `compileSdk = 35`, `minSdk = 23`, `targetSdk = 33` (tuned for Realme 6 Android 10/11).
 * **UI:** XML layouts + ViewBinding, Material Components 1.12.0, AppCompat 1.7.0.
 * **Target device:** Realme 6 (RMX2001), Realme UI 1.0/2.0 on Android 10/11.
-* **Toolchain requirement:** JDK 17 + Android SDK platform 35. Not available in the authoring environment.
+* **Toolchain requirement:** JDK 17 + Android SDK platform 35. Not available in the authoring environment; GitHub Actions (`ci.yml`) is the verification runner.
 
 ## 2. Mandatory Verification & Build Commands
 * **Build:** `.\gradlew assembleDebug`
 * **Lint:** `.\gradlew lintDebug`
-* **Verification gate:** Do not tag or distribute until both commands pass on a machine with the toolchain.
+* **Verification gate:** Do not tag or distribute until both commands pass in CI or on a machine with the toolchain.
 
 ## 3. Repository Directory Structure & Conventions
-* `app/src/main/java/com/volumemanager/` — activity, boot receiver, foreground service.
-* `app/src/main/java/com/volumemanager/overlay/` — all `WindowManager` and touch logic.
-* `app/src/main/java/com/volumemanager/util/` — permission and OEM deep-link helpers.
-* `app/src/main/res/` — layouts, drawables, values, launcher icons.
+* `app/src/main/java/com/volumemanager/` — `MainActivity`, `VolumeAccessibilityService`, `VolumeTileService`, `PanelLaunchActivity`, `VolumeManagerApp`.
+* `app/src/main/java/com/volumemanager/overlay/` — `FloatingButtonOverlay` (`TYPE_ACCESSIBILITY_OVERLAY` window & touch handling).
+* `app/src/main/java/com/volumemanager/util/` — `SystemVolumeHelper`, `OverlayPrefs`, `Permissions`, `RealmeSettings`, `CrashReporter`.
+* `app/src/main/res/` — DayNight XML layouts, drawables, `accessibility_service_config.xml`, values, launcher icons.
 * `docs/` — `PRODUCT.md`, `ARCHITECTURE.md`, `DECISIONS_AND_TRAPS.md` (native Mermaid, no HTML guides).
-* Single-responsibility source files; no new XML-free monolithic service.
+* **Legacy branch:** Full custom vertical slider edition (`v1.4.0`) lives on `archive/full-custom-panel`.
 
-## 4. Repository-Specific Engineering Traps
-* **TRAP 1:** Realme UI blocks `BOOT_COMPLETED` without manual Auto-launch; never remove the deep-link button in `RealmeSettings -> openAutoLaunch`.
-* **TRAP 2:** `BOOT_COMPLETED` is post-unlock; `LOCKED_BOOT_COMPLETED` must defer to `ACTION_USER_UNLOCKED` because the service is not `directBootAware`.
-* **TRAP 3:** Every overlay entry point (`show`, `togglePanel`) must re-check `Settings.canDrawOverlays` or a revoked permission crashes the service.
-* **TRAP 4:** Dynamic `registerReceiver` calls need `Context.RECEIVER_EXPORTED` on API 33+ for system broadcasts.
-* **TRAP 5:** Do not reintroduce the legacy `package` attribute in `AndroidManifest.xml`; AGP 8 uses `namespace` in Gradle.
+## 4. Repository-Specific Trap Pointers
+* `[TRAP: SharedPreferences WeakReference Drops Anonymous Listeners]` — always keep `prefListener` as a strong member field.
+* `[TRAP: AudioManager.adjustVolume Cannot Programmatically Dismiss SystemUI Slider]` — tap opens Realme's slider; outside tap/timeout closes it.
+* `[TRAP: Service Status Pill Inferring Running State From Settings Only]` — combine `isAccessibilityServiceEnabled` and `VolumeAccessibilityService.isConnected`.
+* `[TRAP: Android 11 Service WindowMetrics Crash In Multi-Window / PiP]` — resolve `DisplayMetrics` first in `screenSize()`.
+* `[TRAP: Dynamic Receiver Flags on API 33+]` — always pass `Context.RECEIVER_EXPORTED` for system broadcasts on API 33+.
+* `[TRAP: Google Play Protect Warning & Offline Trust]` — never add `INTERNET` or `canRetrieveWindowContent="true"`.

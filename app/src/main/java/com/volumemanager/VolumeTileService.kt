@@ -7,10 +7,11 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import androidx.annotation.RequiresApi
 import com.volumemanager.util.CrashReporter
+import com.volumemanager.util.SystemVolumeHelper
 
 /**
- * Quick Settings tile providing a 1-tap backup to summon Realme UI's native
- * multi-stream volume dialog even if the overlay service is stopped.
+ * Quick Settings tile providing a 1-tap trigger to summon Realme UI's native
+ * multi-stream volume dialog with zero background battery cost.
  */
 @RequiresApi(Build.VERSION_CODES.N)
 class VolumeTileService : TileService() {
@@ -31,7 +32,6 @@ class VolumeTileService : TileService() {
         CrashReporter.logEvent(this, "TILE", "QS tile clicked")
 
         val launchIntent = Intent(this, PanelLaunchActivity::class.java).apply {
-            putExtra(PanelLaunchActivity.EXTRA_MODE, PanelLaunchActivity.MODE_SYSTEM_VOLUME_UI)
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_SINGLE_TOP or
@@ -55,7 +55,7 @@ class VolumeTileService : TileService() {
             }
         } catch (e: Throwable) {
             CrashReporter.recordError(this, "VolumeTileService.onClick", e)
-            PanelLaunchActivity.showSystemVolumeUi(this)
+            SystemVolumeHelper.showSystemVolumeUi(this)
         }
     }
 }

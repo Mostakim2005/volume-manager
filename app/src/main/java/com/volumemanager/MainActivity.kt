@@ -1,70 +1,78 @@
 package com.volumemanager
 
-import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
-import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.widget.SeekBar
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import com.google.android.material.button.MaterialButton
 import com.volumemanager.databinding.ActivityMainBinding
 import com.volumemanager.util.CrashReporter
+import com.volumemanager.util.OverlayPrefs
 import com.volumemanager.util.Permissions
 import com.volumemanager.util.RealmeSettings
+import com.volumemanager.util.SystemVolumeHelper
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-
-    private val requestNotifications = registerForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (!granted) {
-            Toast.makeText(this, "Notifications are needed for the foreground service", Toast.LENGTH_SHORT).show()
-        }
-        updateStatus()
-    }
+    private var isUpdatingUi = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.btnStart.setOnClickListener { startOverlayService() }
-        binding.btnStop.setOnClickListener { stopOverlayService() }
-        binding.btnSystemVolume.setOnClickListener { PanelLaunchActivity.showSystemVolumeUi(this) }
+        binding.switchFloatingButton.setOnCheckedChangeListener { _, isChecked ->
+            if (isUpdatingUi) return@setOnCheckedChangeListener
+            if (isChecked && !VolumeAccessibilityService.isConnected) {
+                isUpdatingUi = true
+                binding.switchFloatingButton.isChecked = false
+                isUpdatingUi = false
+                openAccessibilityWithHint()
+                return@setOnCheckedChangeListener
+            }
+            OverlayPrefs.setButtonEnabled(this, isChecked)
+            updateStatus()
+        }
 
-        binding.btnOverlay.setOnClickListener { RealmeSettings.openDisplayOverOtherApps(this) }
-        binding.btnAutoLaunch.setOnClickListener { RealmeSettings.openAutoLaunch(this) }
+        binding.btnAccessibilityCta.setOnClickListener { openAccessibilityWithHint() }
+        binding.btnSystemVolume.setOnClickListener { SystemVolumeHelper.showSystemVolumeUi(this) }
+
+        binding.btnSizeCompact.setOnClickListener { selectButtonSize(OverlayPrefs.SIZE_COMPACT_DP) }
+        binding.btnSizeStandard.setOnClickListener { selectButtonSize(OverlayPrefs.SIZE_STANDARD_DP) }
+        binding.btnSizeLarge.setOnClickListener { selectButtonSize(OverlayPrefs.SIZE_LARGE_DP) }
+
+        binding.seekIdleOpacity.max = OverlayPrefs.MAX_IDLE_OPACITY - OverlayPrefs.MIN_IDLE_OPACITY
+        binding.seekIdleOpacity.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser || isUpdatingUi) return
+                val percent = OverlayPrefs.MIN_IDLE_OPACITY + progress
+                binding.textIdleOpacityValue.text = getString(R.string.opacity_percent_format, percent)
+                OverlayPrefs.setIdleOpacityPercent(this@MainActivity, percent)
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+        })
+
+        binding.btnAccessibility.setOnClickListener { openAccessibilityWithHint() }
         binding.btnBatteryOptimization.setOnClickListener {
             try {
                 startActivity(Permissions.batteryOptimizationIntent(this))
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 RealmeSettings.openAppBatteryManagement(this)
             }
         }
-        binding.btnDndAccess.setOnClickListener {
-            try {
-                startActivity(Permissions.notificationPolicyAccessIntent())
-            } catch (e: Exception) {
-                Toast.makeText(this, "Could not open DND settings: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
+        binding.btnAutoLaunch.setOnClickListener { RealmeSettings.openAutoLaunch(this) }
         binding.btnBatteryManagement.setOnClickListener { RealmeSettings.openAppBatteryManagement(this) }
-        binding.btnNotifications.setOnClickListener {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-                Toast.makeText(this, "Not needed on Android 12 and below", Toast.LENGTH_SHORT).show()
-            }
-        }
 
         binding.btnCopyCrash.setOnClickListener {
             val crash = CrashReporter.readCrashSummary(this)
@@ -88,7 +96,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        OverlayVolumeService.onRunningStateChanged = {
+        VolumeAccessibilityService.onConnectionChanged = {
             runOnUiThread {
                 if (!isFinishing && !isDestroyed) {
                     updateStatus()
@@ -98,7 +106,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
-        OverlayVolumeService.onRunningStateChanged = null
+        VolumeAccessibilityService.onConnectionChanged = null
         super.onStop()
     }
 
@@ -111,44 +119,56 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startOverlayService() {
-        try {
-            if (!Permissions.canDrawOverlays(this)) {
-                Toast.makeText(this, "Grant 'Display over other apps' first", Toast.LENGTH_LONG).show()
-                RealmeSettings.openDisplayOverOtherApps(this)
-                return
-            }
-            if (!Permissions.hasNotificationPermission(this) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-                return
-            }
-            val intent = Intent(this, OverlayVolumeService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
-            binding.root.postDelayed({
-                if (!isFinishing && !isDestroyed) updateStatus()
-            }, 250)
-            Toast.makeText(this, "Volume overlay started", Toast.LENGTH_SHORT).show()
-        } catch (e: Throwable) {
-            CrashReporter.recordError(this, "MainActivity.startOverlayService", e)
-            Toast.makeText(this, "Could not start overlay: ${e.message}", Toast.LENGTH_SHORT).show()
+    private fun openAccessibilityWithHint() {
+        Toast.makeText(this, R.string.toast_enable_accessibility, Toast.LENGTH_LONG).show()
+        RealmeSettings.openAccessibilitySettings(this)
+    }
+
+    private fun selectButtonSize(sizeDp: Int) {
+        OverlayPrefs.setSizeDp(this, sizeDp)
+        updateSizeSelection(sizeDp)
+    }
+
+    private fun updateSizeSelection(selectedDp: Int) {
+        val pairs = listOf(
+            binding.btnSizeCompact to OverlayPrefs.SIZE_COMPACT_DP,
+            binding.btnSizeStandard to OverlayPrefs.SIZE_STANDARD_DP,
+            binding.btnSizeLarge to OverlayPrefs.SIZE_LARGE_DP,
+        )
+        val activeBg = ContextCompat.getColor(this, R.color.chip_active_bg)
+        val activeText = ContextCompat.getColor(this, R.color.chip_active_text)
+        val activeStroke = ContextCompat.getColor(this, R.color.primary)
+        val normalBg = ContextCompat.getColor(this, R.color.card_background)
+        val normalText = ContextCompat.getColor(this, R.color.text_secondary)
+        val normalStroke = ContextCompat.getColor(this, R.color.card_stroke)
+
+        for ((btn, size) in pairs) {
+            styleSizeButton(
+                button = btn,
+                selected = size == selectedDp,
+                activeBg = activeBg,
+                activeText = activeText,
+                activeStroke = activeStroke,
+                normalBg = normalBg,
+                normalText = normalText,
+                normalStroke = normalStroke,
+            )
         }
     }
 
-    private fun stopOverlayService() {
-        try {
-            stopService(Intent(this, OverlayVolumeService::class.java))
-            binding.root.postDelayed({
-                if (!isFinishing && !isDestroyed) updateStatus()
-            }, 250)
-            Toast.makeText(this, "Volume overlay stopped", Toast.LENGTH_SHORT).show()
-        } catch (e: Throwable) {
-            CrashReporter.recordError(this, "MainActivity.stopOverlayService", e)
-            Toast.makeText(this, "Could not stop overlay: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
+    private fun styleSizeButton(
+        button: MaterialButton,
+        selected: Boolean,
+        activeBg: Int,
+        activeText: Int,
+        activeStroke: Int,
+        normalBg: Int,
+        normalText: Int,
+        normalStroke: Int,
+    ) {
+        button.backgroundTintList = ColorStateList.valueOf(if (selected) activeBg else normalBg)
+        button.setTextColor(if (selected) activeText else normalText)
+        button.strokeColor = ColorStateList.valueOf(if (selected) activeStroke else normalStroke)
     }
 
     private fun copyTextToClipboard(label: String, text: String, toastResId: Int) {
@@ -178,76 +198,78 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateStatus() {
-        val hasOverlay = Permissions.canDrawOverlays(this)
-        val hasNotif = Permissions.hasNotificationPermission(this)
+        val accEnabled = Permissions.isAccessibilityServiceEnabled(this)
+        val accConnected = VolumeAccessibilityService.isConnected
+        val buttonEnabled = OverlayPrefs.isButtonEnabled(this)
         val isBatteryExempt = Permissions.isIgnoringBatteryOptimizations(this)
-        val hasDndAccess = Permissions.hasNotificationPolicyAccess(this)
+        val sizeDp = OverlayPrefs.getSizeDp(this)
+        val opacityPercent = OverlayPrefs.getIdleOpacityPercent(this)
 
-        if (hasOverlay) {
-            binding.btnOverlay.text = "GRANTED ✓"
-            binding.btnOverlay.setTextColor(ContextCompat.getColor(this, R.color.status_pill_ok_text))
-        } else {
-            binding.btnOverlay.text = "SETUP ➔"
-            binding.btnOverlay.setTextColor(ContextCompat.getColor(this, R.color.primary))
-        }
+        isUpdatingUi = true
+        binding.switchFloatingButton.isChecked = accConnected && buttonEnabled
+        binding.seekIdleOpacity.progress = opacityPercent - OverlayPrefs.MIN_IDLE_OPACITY
+        binding.textIdleOpacityValue.text = getString(R.string.opacity_percent_format, opacityPercent)
+        isUpdatingUi = false
 
-        if (hasNotif) {
-            binding.btnNotifications.text = "ENABLED ✓"
-            binding.btnNotifications.setTextColor(ContextCompat.getColor(this, R.color.status_pill_ok_text))
-        } else {
-            binding.btnNotifications.text = "SETUP ➔"
-            binding.btnNotifications.setTextColor(ContextCompat.getColor(this, R.color.primary))
+        updateSizeSelection(sizeDp)
+
+        when {
+            accConnected -> {
+                binding.btnAccessibility.text = getString(R.string.perm_connected)
+                binding.btnAccessibility.setTextColor(ContextCompat.getColor(this, R.color.status_pill_ok_text))
+                binding.btnAccessibilityCta.visibility = View.GONE
+            }
+            accEnabled -> {
+                binding.btnAccessibility.text = getString(R.string.perm_retoggle)
+                binding.btnAccessibility.setTextColor(ContextCompat.getColor(this, R.color.status_pill_warn_text))
+                binding.btnAccessibilityCta.visibility = View.VISIBLE
+                binding.btnAccessibilityCta.text = getString(R.string.btn_accessibility_retoggle)
+            }
+            else -> {
+                binding.btnAccessibility.text = getString(R.string.perm_setup)
+                binding.btnAccessibility.setTextColor(ContextCompat.getColor(this, R.color.primary))
+                binding.btnAccessibilityCta.visibility = View.VISIBLE
+                binding.btnAccessibilityCta.text = getString(R.string.btn_accessibility_enable)
+            }
         }
 
         if (isBatteryExempt) {
-            binding.btnBatteryOptimization.text = "EXEMPT ✓"
+            binding.btnBatteryOptimization.text = getString(R.string.perm_exempt)
             binding.btnBatteryOptimization.setTextColor(ContextCompat.getColor(this, R.color.status_pill_ok_text))
         } else {
-            binding.btnBatteryOptimization.text = "SETUP ➔"
+            binding.btnBatteryOptimization.text = getString(R.string.perm_setup)
             binding.btnBatteryOptimization.setTextColor(ContextCompat.getColor(this, R.color.primary))
         }
 
-        if (hasDndAccess) {
-            binding.btnDndAccess.text = "GRANTED ✓"
-            binding.btnDndAccess.setTextColor(ContextCompat.getColor(this, R.color.status_pill_ok_text))
-        } else {
-            binding.btnDndAccess.text = "OPTIONAL ➔"
-            binding.btnDndAccess.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
-        }
-
         when {
-            OverlayVolumeService.isRunning -> {
-                binding.statusPillService.text = getString(R.string.status_running)
-                binding.statusPillService.setTextColor(ContextCompat.getColor(this, R.color.status_pill_ok_text))
-                ViewCompat.setBackgroundTintList(
-                    binding.statusPillService,
-                    ColorStateList.valueOf(ContextCompat.getColor(this, R.color.status_pill_ok_bg)),
-                )
-            }
-            hasOverlay && hasNotif -> {
-                binding.statusPillService.text = getString(R.string.status_stopped)
-                binding.statusPillService.setTextColor(ContextCompat.getColor(this, R.color.status_pill_warn_text))
-                ViewCompat.setBackgroundTintList(
-                    binding.statusPillService,
-                    ColorStateList.valueOf(ContextCompat.getColor(this, R.color.status_pill_warn_bg)),
-                )
-            }
-            else -> {
-                binding.statusPillService.text = getString(R.string.status_setup_required)
-                binding.statusPillService.setTextColor(ContextCompat.getColor(this, R.color.status_pill_warn_text))
-                ViewCompat.setBackgroundTintList(
-                    binding.statusPillService,
-                    ColorStateList.valueOf(ContextCompat.getColor(this, R.color.status_pill_warn_bg)),
-                )
-            }
+            accConnected && buttonEnabled -> applyStatusPill(
+                textRes = R.string.status_running,
+                textColorRes = R.color.status_pill_ok_text,
+                bgColorRes = R.color.status_pill_ok_bg,
+            )
+            accConnected -> applyStatusPill(
+                textRes = R.string.status_hidden,
+                textColorRes = R.color.status_pill_warn_text,
+                bgColorRes = R.color.status_pill_warn_bg,
+            )
+            accEnabled -> applyStatusPill(
+                textRes = R.string.status_restart_needed,
+                textColorRes = R.color.status_pill_warn_text,
+                bgColorRes = R.color.status_pill_warn_bg,
+            )
+            else -> applyStatusPill(
+                textRes = R.string.status_setup_required,
+                textColorRes = R.color.status_pill_warn_text,
+                bgColorRes = R.color.status_pill_warn_bg,
+            )
         }
 
         fun mark(ok: Boolean) = if (ok) "ON" else "OFF"
         binding.statusText.text = listOf(
-            "Display over other apps: ${mark(hasOverlay)}",
-            "Notifications: ${mark(hasNotif)}",
+            "Accessibility enabled: ${mark(accEnabled)}",
+            "Accessibility connected: ${mark(accConnected)}",
+            "Floating button visible: ${mark(buttonEnabled)}",
             "Battery optimization ignored: ${mark(isBatteryExempt)}",
-            "DND policy access: ${mark(hasDndAccess)}",
         ).joinToString(separator = "\n")
 
         val crashSummary = CrashReporter.readCrashSummary(this)
@@ -257,5 +279,14 @@ class MainActivity : AppCompatActivity() {
         } else {
             binding.cardCrashAlert.visibility = View.GONE
         }
+    }
+
+    private fun applyStatusPill(textRes: Int, textColorRes: Int, bgColorRes: Int) {
+        binding.statusPillService.text = getString(textRes)
+        binding.statusPillService.setTextColor(ContextCompat.getColor(this, textColorRes))
+        ViewCompat.setBackgroundTintList(
+            binding.statusPillService,
+            ColorStateList.valueOf(ContextCompat.getColor(this, bgColorRes)),
+        )
     }
 }
